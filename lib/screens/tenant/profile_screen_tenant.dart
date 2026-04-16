@@ -1,16 +1,58 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:smart_rental_app/screens/welcome_screen.dart';
+import 'edit_profile_screen.dart';
+import 'report_issue_screen.dart';
 
-class LandlordProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   final String userName;
   final String userEmail;
 
-  const LandlordProfileScreen({
+  const ProfileScreen({
     super.key,
     required this.userName,
     required this.userEmail,
   });
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  late String currentName;
+  late String currentEmail;
+  String currentPhone = "012-3456789";
+  String currentLocation = "Kuala Lumpur";
+
+  @override
+  void initState() {
+    super.initState();
+    currentName = widget.userName;
+    currentEmail = widget.userEmail;
+  }
+
+  Future<void> _openEditProfile() async {
+    final result = await Navigator.push<Map<String, String>>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EditProfileScreen(
+          userName: currentName,
+          userEmail: currentEmail,
+          userPhone: currentPhone,
+          userLocation: currentLocation,
+        ),
+      ),
+    );
+
+    if (result != null) {
+      setState(() {
+        currentName = result['name'] ?? currentName;
+        currentEmail = result['email'] ?? currentEmail;
+        currentPhone = result['phone'] ?? currentPhone;
+        currentLocation = result['location'] ?? currentLocation;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,42 +79,56 @@ class LandlordProfileScreen extends StatelessWidget {
                     _menuTile(
                       Icons.person_outline,
                       "Edit Profile",
-                      "Update your information",
+                      "Update your personal information",
+                      _openEditProfile,
                     ),
                     _menuTile(
-                      Icons.home_work_outlined,
-                      "My Properties",
-                      "Manage your listings",
+                      Icons.favorite_border,
+                      "Saved Properties",
+                      "Your favorite listings",
+                      () {},
                     ),
                     _menuTile(
-                      Icons.book_online_outlined,
-                      "Booking Management",
-                      "Track reservations",
+                      Icons.history,
+                      "Booking History",
+                      "Your past bookings",
+                      () {},
                     ),
                     _menuTile(
-                      Icons.account_balance_wallet_outlined,
-                      "Earnings & Payouts",
-                      "View your income",
+                      Icons.payment_outlined,
+                      "Payments",
+                      "Manage payments",
+                      () {},
                     ),
 
                     const SizedBox(height: 20),
 
-                    _sectionTitle("Preferences"),
+                    _sectionTitle("Support"),
 
-                    _menuTile(
-                      Icons.notifications_outlined,
-                      "Notifications",
-                      "Manage alerts",
-                    ),
                     _menuTile(
                       Icons.settings_outlined,
                       "Settings",
-                      "App & privacy settings",
+                      "App preferences",
+                      () {},
+                    ),
+                    _menuTile(
+                      Icons.report_outlined,
+                      "Report Issue",
+                      "Report serious problems",
+                      () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const ReportIssueScreen(),
+                          ),
+                        );
+                      },
                     ),
                     _menuTile(
                       Icons.help_outline,
                       "Help & Support",
                       "Get assistance",
+                      () {},
                     ),
 
                     const SizedBox(height: 30),
@@ -88,7 +144,7 @@ class LandlordProfileScreen extends StatelessWidget {
     );
   }
 
-  // 🔥 HEADER
+  // 💎 HEADER
   Widget _header() {
     return Container(
       width: double.infinity,
@@ -109,14 +165,7 @@ class LandlordProfileScreen extends StatelessWidget {
       ),
       child: Column(
         children: [
-          const Align(
-            alignment: Alignment.topRight,
-            child: Icon(Icons.settings_outlined, color: Color(0xFFB8964F)),
-          ),
-
-          const SizedBox(height: 10),
-
-          // PROFILE IMAGE
+          // Avatar
           Container(
             width: 100,
             height: 100,
@@ -129,9 +178,9 @@ class LandlordProfileScreen extends StatelessWidget {
 
           const SizedBox(height: 14),
 
-          // NAME
+          // Name
           Text(
-            userName,
+            currentName,
             style: GoogleFonts.cormorantGaramond(
               fontSize: 26,
               fontWeight: FontWeight.bold,
@@ -141,22 +190,26 @@ class LandlordProfileScreen extends StatelessWidget {
 
           const SizedBox(height: 6),
 
-          // EMAIL
+          // Email
+          Text(currentEmail, style: const TextStyle(color: Color(0xFF8B7355))),
+
+          const SizedBox(height: 4),
+
+          // Location
           Text(
-            userEmail,
+            currentLocation,
             style: const TextStyle(color: Color(0xFF8B7355), fontSize: 13),
           ),
 
           const SizedBox(height: 20),
 
-          // STATS
           Row(
             children: const [
-              Expanded(child: _StatCard("Listings", "12")),
+              Expanded(child: _StatCard("Saved", "12")),
               SizedBox(width: 10),
-              Expanded(child: _StatCard("Bookings", "28")),
+              Expanded(child: _StatCard("Bookings", "5")),
               SizedBox(width: 10),
-              Expanded(child: _StatCard("Revenue", "RM4.2k")),
+              Expanded(child: _StatCard("Reviews", "3")),
             ],
           ),
         ],
@@ -164,7 +217,7 @@ class LandlordProfileScreen extends StatelessWidget {
     );
   }
 
-  // 🔥 SECTION TITLE
+  // 💎 TITLE
   Widget _sectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -179,8 +232,13 @@ class LandlordProfileScreen extends StatelessWidget {
     );
   }
 
-  // 🔥 MENU TILE
-  Widget _menuTile(IconData icon, String title, String subtitle) {
+  // 💎 MENU TILE
+  Widget _menuTile(
+    IconData icon,
+    String title,
+    String subtitle,
+    VoidCallback onTap,
+  ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
@@ -195,11 +253,12 @@ class LandlordProfileScreen extends StatelessWidget {
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Text(subtitle),
         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+        onTap: onTap,
       ),
     );
   }
 
-  // 🔥 LOGOUT BUTTON
+  // 💎 LOGOUT
   Widget _logoutButton(BuildContext context) {
     return SizedBox(
       width: double.infinity,
@@ -223,22 +282,19 @@ class LandlordProfileScreen extends StatelessWidget {
             backgroundColor: Colors.transparent,
             shadowColor: Colors.transparent,
           ),
-          child: const Text(
-            "Logout",
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
+          child: const Text("Logout", style: TextStyle(color: Colors.white)),
         ),
       ),
     );
   }
 }
 
-// 🔥 STAT CARD
+// 💎 STAT CARD
 class _StatCard extends StatelessWidget {
   final String title;
-  final String value;
+  final String count;
 
-  const _StatCard(this.title, this.value);
+  const _StatCard(this.title, this.count);
 
   @override
   Widget build(BuildContext context) {
@@ -251,10 +307,9 @@ class _StatCard extends StatelessWidget {
       child: Column(
         children: [
           Text(
-            value,
+            count,
             style: const TextStyle(
               fontWeight: FontWeight.bold,
-              fontSize: 16,
               color: Color(0xFFB8964F),
             ),
           ),

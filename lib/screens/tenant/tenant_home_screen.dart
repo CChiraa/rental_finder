@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:smart_rental_app/screens/tenant/property_detail_screen.dart';
-import 'package:smart_rental_app/screens/tenant/profile_screen.dart';
+import 'package:smart_rental_app/screens/tenant/profile_screen_tenant.dart';
 import 'favorite_screen.dart';
 
 class HomeScreen extends StatelessWidget {
