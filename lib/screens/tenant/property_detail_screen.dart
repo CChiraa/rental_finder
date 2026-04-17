@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:smart_rental_app/theme/theme.dart';
 import 'package:smart_rental_app/screens/tenant/booking_tenant.dart';
-import 'favorite_manager.dart'; // 🔥 IMPORT THIS
+import 'package:smart_rental_app/screens/tenant/chat_detail_screen.dart';
+import 'package:smart_rental_app/screens/tenant/chat_manager.dart';
+import 'favorite_manager.dart';
 
 class PropertyDetailScreen extends StatefulWidget {
   final Map<String, dynamic> property;
@@ -16,151 +18,350 @@ class PropertyDetailScreen extends StatefulWidget {
 class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
   @override
   Widget build(BuildContext context) {
-    LatLng location = LatLng(widget.property['lat'], widget.property['lng']);
+    final LatLng location = LatLng(
+      (widget.property['lat'] ?? 0.0).toDouble(),
+      (widget.property['lng'] ?? 0.0).toDouble(),
+    );
+
+    final bool favorite = FavoriteManager.isFavorite(widget.property);
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF8F1E7),
       body: Stack(
         children: [
-          // 🖼️ IMAGE HEADER
           SizedBox(
-            height: 300,
+            height: 330,
             width: double.infinity,
-            child: Image.asset(widget.property['image'], fit: BoxFit.cover),
-          ),
-
-          // 🔙 BACK BUTTON
-          Positioned(
-            top: 40,
-            left: 10,
-            child: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ),
-
-          // ❤️ FAVORITE BUTTON
-          Positioned(
-            top: 40,
-            right: 10,
-            child: IconButton(
-              icon: Icon(
-                FavoriteManager.isFavorite(widget.property)
-                    ? Icons.favorite
-                    : Icons.favorite_border,
-                color: Colors.red,
-              ),
-              onPressed: () {
-                setState(() {
-                  FavoriteManager.toggleFavorite(widget.property);
-                });
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      FavoriteManager.isFavorite(widget.property)
-                          ? "Added to favorites ❤️"
-                          : "Removed from favorites",
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.asset(widget.property['image'], fit: BoxFit.cover),
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withOpacity(0.28),
+                        Colors.black.withOpacity(0.12),
+                        Colors.black.withOpacity(0.45),
+                      ],
                     ),
                   ),
-                );
-              },
+                ),
+              ],
             ),
           ),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _topIconButton(
+                    icon: Icons.arrow_back_ios_new_rounded,
+                    onTap: () => Navigator.pop(context),
+                  ),
+                  _topIconButton(
+                    icon: favorite
+                        ? Icons.favorite_rounded
+                        : Icons.favorite_border_rounded,
+                    iconColor: favorite
+                        ? Colors.redAccent
+                        : const Color(0xFF2B2118),
+                    onTap: () {
+                      setState(() {
+                        FavoriteManager.toggleFavorite(widget.property);
+                      });
 
-          // 📄 CONTENT
+                      final bool nowFavorite = FavoriteManager.isFavorite(
+                        widget.property,
+                      );
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          backgroundColor: const Color(0xFF2B2118),
+                          content: Text(
+                            nowFavorite
+                                ? 'Added to favorites ❤️'
+                                : 'Removed from favorites',
+                            style: GoogleFonts.inter(color: Colors.white),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
           DraggableScrollableSheet(
-            initialChildSize: 0.6,
-            maxChildSize: 0.9,
-            minChildSize: 0.6,
+            initialChildSize: 0.63,
+            minChildSize: 0.63,
+            maxChildSize: 0.92,
             builder: (_, controller) {
               return Container(
-                padding: const EdgeInsets.all(20),
                 decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+                  color: Color(0xFFF8F1E7),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(34)),
                 ),
                 child: SingleChildScrollView(
                   controller: controller,
+                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 28),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        widget.property['title'],
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
+                      Center(
+                        child: Container(
+                          width: 44,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: Colors.brown.withOpacity(0.20),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
                         ),
                       ),
-
-                      const SizedBox(height: 10),
-
+                      const SizedBox(height: 18),
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.location_on, color: Colors.blue),
-                          Text(widget.property['location']),
+                          Expanded(
+                            child: Text(
+                              widget.property['title'] ?? 'Property',
+                              style: GoogleFonts.cormorantGaramond(
+                                fontSize: 34,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF2B2118),
+                                height: 1,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFFE6BC6D), Color(0xFFBE8233)],
+                              ),
+                              borderRadius: BorderRadius.circular(18),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(
+                                    0xFFC89243,
+                                  ).withOpacity(0.18),
+                                  blurRadius: 14,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
+                            ),
+                            child: Text(
+                              widget.property['price'] ?? 'RM 0',
+                              style: GoogleFonts.inter(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
-
-                      const SizedBox(height: 10),
-
-                      Text(
-                        widget.property['price'],
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green,
-                        ),
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      const Text(
-                        'Description',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      Text(
-                        widget.property['description'],
-                        style: const TextStyle(fontSize: 15),
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      const Text(
-                        'Location',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-
-                      const SizedBox(height: 10),
-
-                      // 🗺️ GOOGLE MAP
-                      SizedBox(
-                        height: 200,
-                        child: GoogleMap(
-                          initialCameraPosition: CameraPosition(
-                            target: location,
-                            zoom: 14,
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.location_on_rounded,
+                            size: 18,
+                            color: Color(0xFFB17B30),
                           ),
-                          markers: {
-                            Marker(
-                              markerId: const MarkerId('property'),
-                              position: location,
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              widget.property['location'] ?? 'Unknown location',
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: const Color(0xFF6F5A40),
+                              ),
                             ),
-                          },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          if (widget.property['type'] != null)
+                            _infoTag(widget.property['type']),
+                          if (widget.property['stayCategory'] != null)
+                            _infoTag(widget.property['stayCategory']),
+                          if (widget.property['postedBy'] != null)
+                            _infoTag(widget.property['postedBy']),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      _sectionTitle('Description'),
+                      const SizedBox(height: 10),
+                      _softCard(
+                        child: Text(
+                          widget.property['description'] ??
+                              'No description provided.',
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            height: 1.65,
+                            color: const Color(0xFF5E4B36),
+                          ),
                         ),
                       ),
+                      const SizedBox(height: 22),
+                      _sectionTitle('Location'),
+                      const SizedBox(height: 10),
+                      _softCard(
+                        padding: const EdgeInsets.all(10),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: SizedBox(
+                            height: 220,
+                            child: GoogleMap(
+                              initialCameraPosition: CameraPosition(
+                                target: location,
+                                zoom: 14,
+                              ),
+                              zoomControlsEnabled: false,
+                              myLocationButtonEnabled: false,
+                              markers: {
+                                Marker(
+                                  markerId: const MarkerId('property'),
+                                  position: location,
+                                  infoWindow: InfoWindow(
+                                    title:
+                                        widget.property['title'] ?? 'Property',
+                                    snippet:
+                                        widget.property['location'] ??
+                                        'Unknown location',
+                                  ),
+                                ),
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                setState(() {
+                                  FavoriteManager.toggleFavorite(
+                                    widget.property,
+                                  );
+                                });
 
-                      const SizedBox(height: 30),
+                                final bool nowFavorite =
+                                    FavoriteManager.isFavorite(widget.property);
 
-                      // 📅 BOOK BUTTON
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    backgroundColor: const Color(0xFF2B2118),
+                                    content: Text(
+                                      nowFavorite
+                                          ? 'Added to favorites ❤️'
+                                          : 'Removed from favorites',
+                                      style: GoogleFonts.inter(
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                              icon: Icon(
+                                FavoriteManager.isFavorite(widget.property)
+                                    ? Icons.favorite_rounded
+                                    : Icons.favorite_border_rounded,
+                                color:
+                                    FavoriteManager.isFavorite(widget.property)
+                                    ? Colors.redAccent
+                                    : const Color(0xFFB17B30),
+                              ),
+                              label: Text(
+                                FavoriteManager.isFavorite(widget.property)
+                                    ? 'Saved'
+                                    : 'Save',
+                                style: GoogleFonts.inter(
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF7B5E35),
+                                ),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(
+                                  color: const Color(
+                                    0xFFD6B36A,
+                                  ).withOpacity(0.75),
+                                  width: 1.2,
+                                ),
+                                backgroundColor: Colors.white.withOpacity(0.6),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 15,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                final chat = ChatManager.getOrCreateChat(
+                                  widget.property,
+                                );
+
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        ChatDetailScreen(chat: chat),
+                                  ),
+                                ).then((_) {
+                                  setState(() {});
+                                });
+                              },
+                              icon: const Icon(
+                                Icons.chat_bubble_outline_rounded,
+                                color: Color(0xFFB17B30),
+                              ),
+                              label: Text(
+                                'Chat',
+                                style: GoogleFonts.inter(
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF7B5E35),
+                                ),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(
+                                  color: const Color(
+                                    0xFFD6B36A,
+                                  ).withOpacity(0.75),
+                                  width: 1.2,
+                                ),
+                                backgroundColor: Colors.white.withOpacity(0.6),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 15,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
@@ -168,28 +369,37 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                             showModalBottomSheet(
                               context: context,
                               isScrollControlled: true,
-                              shape: const RoundedRectangleBorder(
-                                borderRadius: BorderRadius.vertical(
-                                  top: Radius.circular(25),
+                              backgroundColor: Colors.transparent,
+                              builder: (context) => Container(
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFF8F1E7),
+                                  borderRadius: BorderRadius.vertical(
+                                    top: Radius.circular(28),
+                                  ),
                                 ),
+                                child: BookingSheet(property: widget.property),
                               ),
-                              builder: (context) =>
-                                  BookingSheet(property: widget.property),
                             );
                           },
                           style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 15),
-                            backgroundColor: Colors.deepPurple,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            backgroundColor: const Color(0xFFB17B30),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
                           ),
                           child: Text(
                             'Book Now',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: lightColorScheme.primary,
+                            style: GoogleFonts.inter(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
                             ),
                           ),
                         ),
                       ),
+                      const SizedBox(height: 12),
                     ],
                   ),
                 ),
@@ -197,6 +407,76 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
             },
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _topIconButton({
+    required IconData icon,
+    required VoidCallback onTap,
+    Color iconColor = const Color(0xFF2B2118),
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.82),
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white.withOpacity(0.5)),
+      ),
+      child: IconButton(
+        onPressed: onTap,
+        icon: Icon(icon, color: iconColor),
+      ),
+    );
+  }
+
+  Widget _sectionTitle(String title) {
+    return Text(
+      title,
+      style: GoogleFonts.inter(
+        fontSize: 18,
+        fontWeight: FontWeight.w700,
+        color: const Color(0xFF2B2118),
+      ),
+    );
+  }
+
+  Widget _softCard({
+    required Widget child,
+    EdgeInsetsGeometry padding = const EdgeInsets.all(16),
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: padding,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.78),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withOpacity(0.65), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFC89243).withOpacity(0.08),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  Widget _infoTag(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3E8D7),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        text,
+        style: GoogleFonts.inter(
+          fontSize: 11.5,
+          fontWeight: FontWeight.w600,
+          color: const Color(0xFF8E6A39),
+        ),
       ),
     );
   }

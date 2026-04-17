@@ -27,8 +27,6 @@ class WelcomeScreen extends StatelessWidget {
           children: [
             _buildBackgroundGlowTopRight(),
             _buildBackgroundGlowBottomLeft(),
-            _buildSideLeaf(left: true),
-            _buildSideLeaf(left: false),
 
             SafeArea(
               child: Padding(
