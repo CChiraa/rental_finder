@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:smart_rental_app/screens/tenant/property_detail_screen.dart';
-import 'package:smart_rental_app/screens/tenant/profile_screen_tenant.dart';
-import 'package:smart_rental_app/screens/tenant/chat_manager.dart';
-import 'package:smart_rental_app/screens/tenant/chat_detail_screen.dart';
+import 'package:smart_rental_app/screens/tenant/tenant_feed_tab.dart';
+import 'package:smart_rental_app/screens/tenant/tenant_map_tab.dart';
+import 'package:smart_rental_app/screens/tenant/tenant_chat_tab.dart';
+import 'package:smart_rental_app/screens/tenant/tenant_profile_screen.dart';
+import 'package:smart_rental_app/screens/tenant/favorite_manager.dart';
 
 class HomeScreen extends StatefulWidget {
   final String userName;
@@ -19,7 +21,6 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController searchController = TextEditingController();
 
   String selectedCategory = 'All';
-  final Set<int> favoriteIds = {};
 
   final List<String> categories = [
     'All',
@@ -79,6 +80,38 @@ class _HomeScreenState extends State<HomeScreen> {
     },
   ];
 
+  final List<Map<String, dynamic>> bookingHistory = [
+    {
+      'title': 'Luxury Condo',
+      'location': 'KLCC, Kuala Lumpur',
+      'date': '18 Apr 2026',
+      'status': 'Pending',
+      'price': 'RM178/night',
+    },
+    {
+      'title': 'Modern Apartment',
+      'location': 'Bukit Bintang, Kuala Lumpur',
+      'date': '10 Apr 2026',
+      'status': 'Successful',
+      'price': 'RM200/night',
+    },
+  ];
+
+  final List<Map<String, dynamic>> payments = [
+    {
+      'title': 'Luxury Condo Booking',
+      'amount': 'RM178',
+      'receiptUploaded': true,
+      'status': 'Verified',
+    },
+    {
+      'title': 'Modern Apartment Deposit',
+      'amount': 'RM200',
+      'receiptUploaded': true,
+      'status': 'Pending',
+    },
+  ];
+
   List<Map<String, dynamic>> get filteredProperties {
     final query = searchController.text.trim().toLowerCase();
 
@@ -105,23 +138,30 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<Map<String, dynamic>> get favoriteProperties {
-    return properties
-        .where((property) => favoriteIds.contains(property['id']))
-        .toList();
+    return FavoriteManager.favorites;
+  }
+
+  Set<int> get favoriteIds {
+    return FavoriteManager.favorites
+        .map<int>((property) => property['id'] as int)
+        .toSet();
   }
 
   void toggleFavorite(int propertyId) {
+    final property = properties.firstWhere(
+      (item) => item['id'] == propertyId,
+      orElse: () => <String, dynamic>{},
+    );
+
+    if (property.isEmpty) return;
+
     setState(() {
-      if (favoriteIds.contains(propertyId)) {
-        favoriteIds.remove(propertyId);
-      } else {
-        favoriteIds.add(propertyId);
-      }
+      FavoriteManager.toggleFavorite(property);
     });
   }
 
-  bool isFavorite(int propertyId) {
-    return favoriteIds.contains(propertyId);
+  bool isFavorite(Map<String, dynamic> property) {
+    return FavoriteManager.isFavorite(property);
   }
 
   @override
@@ -139,10 +179,20 @@ class _HomeScreenState extends State<HomeScreen> {
           index: _currentIndex,
           children: [
             _buildHomeTab(),
-            _buildFeedTab(),
-            _buildMapTab(),
-            _buildChatTab(),
-            _buildProfileTab(),
+            TenantFeedTab(
+              properties: properties,
+              favoriteIds: favoriteIds,
+              onToggleFavorite: toggleFavorite,
+            ),
+            TenantMapTab(properties: properties),
+            const TenantChatTab(),
+            TenantProfileScreen(
+              userName: widget.userName,
+              userEmail: '${widget.userName}@gmail.com',
+              savedProperties: favoriteProperties,
+              bookingHistory: bookingHistory,
+              payments: payments,
+            ),
           ],
         ),
       ),
@@ -312,7 +362,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                         builder: (context) => _buildFavoriteSheet(),
-                      );
+                      ).then((_) => setState(() {}));
                     },
                     child: Container(
                       padding: const EdgeInsets.all(10),
@@ -327,7 +377,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                       child: Icon(
-                        favoriteIds.isNotEmpty
+                        favoriteProperties.isNotEmpty
                             ? Icons.favorite
                             : Icons.favorite_border_rounded,
                         color: const Color(0xFFB17B30),
@@ -381,233 +431,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildFeedTab() {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
-      children: [
-        Text(
-          'Feed',
-          style: GoogleFonts.cormorantGaramond(
-            fontSize: 34,
-            fontWeight: FontWeight.w700,
-            color: const Color(0xFF2B2118),
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          'Latest property posts from landlords',
-          style: GoogleFonts.inter(
-            fontSize: 14,
-            color: const Color(0xFF6F5A40),
-          ),
-        ),
-        const SizedBox(height: 16),
-        ...properties.map((property) => _facebookStyleFeedCard(property)),
-      ],
-    );
-  }
-
-  Widget _buildMapTab() {
-    return Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          const SizedBox(height: 8),
-          Text(
-            'Map Search',
-            style: GoogleFonts.cormorantGaramond(
-              fontSize: 34,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF2B2118),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Later you can connect Google Maps and place all landlord listings here.',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              color: const Color(0xFF6F5A40),
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 20),
-          Container(
-            height: 240,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.9),
-              borderRadius: BorderRadius.circular(28),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 16,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: const Center(
-              child: Icon(
-                Icons.map_rounded,
-                size: 60,
-                color: Color(0xFFB17B30),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          Expanded(
-            child: ListView.separated(
-              itemCount: properties.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final property = properties[index];
-                return Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.92),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.location_on_rounded,
-                        color: Color(0xFFB17B30),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          '${property['title']} • ${property['location']}',
-                          style: GoogleFonts.inter(
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF4A3B2B),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildChatTab() {
-    final chats = ChatManager.chats;
-
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        const SizedBox(height: 8),
-        Text(
-          'Chats',
-          style: GoogleFonts.cormorantGaramond(
-            fontSize: 34,
-            fontWeight: FontWeight.w700,
-            color: const Color(0xFF2B2118),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Talk to landlords directly here.',
-          style: GoogleFonts.inter(
-            fontSize: 14,
-            color: const Color(0xFF6F5A40),
-            height: 1.5,
-          ),
-        ),
-        const SizedBox(height: 18),
-
-        if (chats.isEmpty)
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.9),
-              borderRadius: BorderRadius.circular(22),
-            ),
-            child: Text(
-              'No chats yet. Start from a property detail screen.',
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                color: const Color(0xFF6F5A40),
-              ),
-            ),
-          ),
-
-        ...chats.map(
-          (chat) => Container(
-            margin: const EdgeInsets.only(bottom: 14),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.95),
-              borderRadius: BorderRadius.circular(22),
-            ),
-            child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 6,
-              ),
-              leading: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: (chat['propertyImage'] ?? '').toString().isNotEmpty
-                    ? Image.asset(
-                        chat['propertyImage'],
-                        width: 52,
-                        height: 52,
-                        fit: BoxFit.cover,
-                      )
-                    : Container(
-                        width: 52,
-                        height: 52,
-                        color: const Color(0xFFF3E8D7),
-                        child: const Icon(
-                          Icons.home_work_rounded,
-                          color: Color(0xFFB17B30),
-                        ),
-                      ),
-              ),
-              title: Text(
-                chat['landlord'] ?? 'Landlord',
-                style: GoogleFonts.inter(fontWeight: FontWeight.w700),
-              ),
-              subtitle: Text(
-                chat['lastMessage'] ?? chat['propertyTitle'] ?? '',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.inter(color: const Color(0xFF7B664C)),
-              ),
-              trailing: Text(
-                chat['lastTime'] ?? '',
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  color: const Color(0xFF9A8B78),
-                ),
-              ),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ChatDetailScreen(chat: chat),
-                  ),
-                ).then((_) {
-                  setState(() {});
-                });
-              },
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildProfileTab() {
-    return ProfileScreen(
-      userName: widget.userName,
-      userEmail: '${widget.userName}@gmail.com',
     );
   }
 
@@ -669,8 +492,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _propertyCard(Map<String, dynamic> property) {
-    final int propertyId = property['id'];
-    final bool favorite = isFavorite(propertyId);
+    final bool favorite = isFavorite(property);
 
     return GestureDetector(
       onTap: () {
@@ -679,7 +501,7 @@ class _HomeScreenState extends State<HomeScreen> {
           MaterialPageRoute(
             builder: (_) => PropertyDetailScreen(property: property),
           ),
-        );
+        ).then((_) => setState(() {}));
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 15),
@@ -710,7 +532,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   right: 10,
                   child: GestureDetector(
                     onTap: () {
-                      toggleFavorite(propertyId);
+                      toggleFavorite(property['id']);
                     },
                     child: Container(
                       padding: const EdgeInsets.all(8),
@@ -799,8 +621,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _discoverCard(Map<String, dynamic> property) {
-    final int propertyId = property['id'];
-    final bool favorite = isFavorite(propertyId);
+    final bool favorite = isFavorite(property);
 
     return GestureDetector(
       onTap: () {
@@ -809,7 +630,7 @@ class _HomeScreenState extends State<HomeScreen> {
           MaterialPageRoute(
             builder: (_) => PropertyDetailScreen(property: property),
           ),
-        );
+        ).then((_) => setState(() {}));
       },
       child: SizedBox(
         width: 160,
@@ -844,7 +665,7 @@ class _HomeScreenState extends State<HomeScreen> {
               right: 10,
               child: GestureDetector(
                 onTap: () {
-                  toggleFavorite(propertyId);
+                  toggleFavorite(property['id']);
                 },
                 child: Container(
                   padding: const EdgeInsets.all(8),
@@ -894,185 +715,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _facebookStyleFeedCard(Map<String, dynamic> property) {
-    final int propertyId = property['id'];
-    final bool favorite = isFavorite(propertyId);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 14,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
-            child: Row(
-              children: [
-                const CircleAvatar(
-                  radius: 22,
-                  backgroundColor: Color(0xFFE6BC6D),
-                  child: Icon(Icons.home_work_rounded, color: Colors.white),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        property['postedBy'] ?? 'Landlord Post',
-                        style: GoogleFonts.inter(
-                          fontSize: 14.5,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFF2B2118),
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          Text(
-                            property['time'] ?? '2h ago',
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              color: const Color(0xFF8F7A61),
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          const Icon(
-                            Icons.public,
-                            size: 14,
-                            color: Color(0xFF8F7A61),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => toggleFavorite(propertyId),
-                  icon: Icon(
-                    favorite ? Icons.favorite : Icons.favorite_border_rounded,
-                    color: favorite
-                        ? Colors.redAccent
-                        : const Color(0xFFB17B30),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '🏡 ${property['title']} now available at ${property['location']}',
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF2B2118),
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  property['description'],
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    color: const Color(0xFF6F5A40),
-                    height: 1.5,
-                  ),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _smallTag(property['type']),
-                    _smallTag(property['stayCategory']),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  property['price'],
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFFB17B30),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(0),
-            child: Image.asset(
-              property['image'],
-              width: double.infinity,
-              height: 220,
-              fit: BoxFit.cover,
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 6),
-            child: Row(
-              children: [
-                Text(
-                  '${favorite ? 25 : 24} interested',
-                  style: GoogleFonts.inter(
-                    fontSize: 12.5,
-                    color: const Color(0xFF8F7A61),
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  '8 comments',
-                  style: GoogleFonts.inter(
-                    fontSize: 12.5,
-                    color: const Color(0xFF8F7A61),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Divider(height: 1, color: Colors.grey.withOpacity(0.2)),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _feedAction(
-                  favorite ? Icons.favorite : Icons.favorite_border_rounded,
-                  'Interested',
-                  onTap: () => toggleFavorite(propertyId),
-                  color: favorite ? Colors.redAccent : const Color(0xFF7B664C),
-                ),
-                _feedAction(
-                  Icons.chat_bubble_outline_rounded,
-                  'Comment',
-                  onTap: () {},
-                ),
-                _feedAction(Icons.send_outlined, 'Share', onTap: () {}),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -1152,7 +794,10 @@ class _HomeScreenState extends State<HomeScreen> {
                               style: GoogleFonts.inter(fontSize: 12.5),
                             ),
                             trailing: IconButton(
-                              onPressed: () => toggleFavorite(property['id']),
+                              onPressed: () {
+                                FavoriteManager.toggleFavorite(property);
+                                setState(() {});
+                              },
                               icon: const Icon(
                                 Icons.favorite,
                                 color: Colors.redAccent,
@@ -1182,26 +827,6 @@ class _HomeScreenState extends State<HomeScreen> {
           fontSize: 11.5,
           fontWeight: FontWeight.w600,
           color: const Color(0xFF8E6A39),
-        ),
-      ),
-    );
-  }
-
-  Widget _feedAction(
-    IconData icon,
-    String label, {
-    required VoidCallback onTap,
-    Color color = const Color(0xFF7B664C),
-  }) {
-    return TextButton.icon(
-      onPressed: onTap,
-      icon: Icon(icon, size: 20, color: color),
-      label: Text(
-        label,
-        style: GoogleFonts.inter(
-          color: color,
-          fontWeight: FontWeight.w600,
-          fontSize: 13,
         ),
       ),
     );

@@ -1,5 +1,9 @@
 class FavoriteManager {
-  static List<Map<String, dynamic>> favorites = [];
+  static final List<Map<String, dynamic>> favorites = [];
+
+  static bool isFavorite(Map<String, dynamic> property) {
+    return favorites.any((item) => item['id'] == property['id']);
+  }
 
   static void toggleFavorite(Map<String, dynamic> property) {
     if (isFavorite(property)) {
@@ -7,9 +11,5 @@ class FavoriteManager {
     } else {
       favorites.add(property);
     }
-  }
-
-  static bool isFavorite(Map<String, dynamic> property) {
-    return favorites.any((item) => item['id'] == property['id']);
   }
 }

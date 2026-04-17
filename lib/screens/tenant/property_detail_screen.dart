@@ -16,15 +16,77 @@ class PropertyDetailScreen extends StatefulWidget {
 }
 
 class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
-  @override
-  Widget build(BuildContext context) {
-    final LatLng location = LatLng(
-      (widget.property['lat'] ?? 0.0).toDouble(),
-      (widget.property['lng'] ?? 0.0).toDouble(),
+  bool get isFavorite => FavoriteManager.isFavorite(widget.property);
+
+  LatLng get location => LatLng(
+    (widget.property['lat'] ?? 0.0).toDouble(),
+    (widget.property['lng'] ?? 0.0).toDouble(),
+  );
+
+  void _toggleFavorite() {
+    setState(() {
+      FavoriteManager.toggleFavorite(widget.property);
+    });
+
+    final bool nowFavorite = FavoriteManager.isFavorite(widget.property);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: const Color(0xFF2B2118),
+        content: Text(
+          nowFavorite ? 'Added to favorites ❤️' : 'Removed from favorites',
+          style: GoogleFonts.inter(color: Colors.white),
+        ),
+      ),
+    );
+  }
+
+  void _openChat() {
+    final chat = ChatManager.getOrCreateChat(widget.property);
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => ChatDetailScreen(chat: chat)),
+    ).then((_) {
+      setState(() {});
+    });
+  }
+
+  Future<void> _openBookingSheet() async {
+    final result = await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFFF8F1E7),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: BookingSheet(property: widget.property),
+      ),
     );
 
-    final bool favorite = FavoriteManager.isFavorite(widget.property);
+    if (!mounted) return;
 
+    if (result != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: const Color(0xFFB17B30),
+          content: Text(
+            'Booking submitted successfully',
+            style: GoogleFonts.inter(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      );
+      setState(() {});
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F1E7),
       body: Stack(
@@ -63,33 +125,13 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                     onTap: () => Navigator.pop(context),
                   ),
                   _topIconButton(
-                    icon: favorite
+                    icon: isFavorite
                         ? Icons.favorite_rounded
                         : Icons.favorite_border_rounded,
-                    iconColor: favorite
+                    iconColor: isFavorite
                         ? Colors.redAccent
                         : const Color(0xFF2B2118),
-                    onTap: () {
-                      setState(() {
-                        FavoriteManager.toggleFavorite(widget.property);
-                      });
-
-                      final bool nowFavorite = FavoriteManager.isFavorite(
-                        widget.property,
-                      );
-
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          backgroundColor: const Color(0xFF2B2118),
-                          content: Text(
-                            nowFavorite
-                                ? 'Added to favorites ❤️'
-                                : 'Removed from favorites',
-                            style: GoogleFonts.inter(color: Colors.white),
-                          ),
-                        ),
-                      );
-                    },
+                    onTap: _toggleFavorite,
                   ),
                 ],
               ),
@@ -122,6 +164,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                         ),
                       ),
                       const SizedBox(height: 18),
+
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -168,7 +211,9 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           ),
                         ],
                       ),
+
                       const SizedBox(height: 14),
+
                       Row(
                         children: [
                           const Icon(
@@ -189,7 +234,9 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           ),
                         ],
                       ),
+
                       const SizedBox(height: 14),
+
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
@@ -202,7 +249,9 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                             _infoTag(widget.property['postedBy']),
                         ],
                       ),
+
                       const SizedBox(height: 24),
+
                       _sectionTitle('Description'),
                       const SizedBox(height: 10),
                       _softCard(
@@ -216,7 +265,9 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           ),
                         ),
                       ),
+
                       const SizedBox(height: 22),
+
                       _sectionTitle('Location'),
                       const SizedBox(height: 10),
                       _softCard(
@@ -249,48 +300,24 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           ),
                         ),
                       ),
+
                       const SizedBox(height: 28),
+
                       Row(
                         children: [
                           Expanded(
                             child: OutlinedButton.icon(
-                              onPressed: () {
-                                setState(() {
-                                  FavoriteManager.toggleFavorite(
-                                    widget.property,
-                                  );
-                                });
-
-                                final bool nowFavorite =
-                                    FavoriteManager.isFavorite(widget.property);
-
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    backgroundColor: const Color(0xFF2B2118),
-                                    content: Text(
-                                      nowFavorite
-                                          ? 'Added to favorites ❤️'
-                                          : 'Removed from favorites',
-                                      style: GoogleFonts.inter(
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
+                              onPressed: _toggleFavorite,
                               icon: Icon(
-                                FavoriteManager.isFavorite(widget.property)
+                                isFavorite
                                     ? Icons.favorite_rounded
                                     : Icons.favorite_border_rounded,
-                                color:
-                                    FavoriteManager.isFavorite(widget.property)
+                                color: isFavorite
                                     ? Colors.redAccent
                                     : const Color(0xFFB17B30),
                               ),
                               label: Text(
-                                FavoriteManager.isFavorite(widget.property)
-                                    ? 'Saved'
-                                    : 'Save',
+                                isFavorite ? 'Saved' : 'Save',
                                 style: GoogleFonts.inter(
                                   fontWeight: FontWeight.w700,
                                   color: const Color(0xFF7B5E35),
@@ -316,21 +343,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           const SizedBox(width: 10),
                           Expanded(
                             child: OutlinedButton.icon(
-                              onPressed: () {
-                                final chat = ChatManager.getOrCreateChat(
-                                  widget.property,
-                                );
-
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        ChatDetailScreen(chat: chat),
-                                  ),
-                                ).then((_) {
-                                  setState(() {});
-                                });
-                              },
+                              onPressed: _openChat,
                               icon: const Icon(
                                 Icons.chat_bubble_outline_rounded,
                                 color: Color(0xFFB17B30),
@@ -361,26 +374,13 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           ),
                         ],
                       ),
+
                       const SizedBox(height: 12),
+
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
-                          onPressed: () {
-                            showModalBottomSheet(
-                              context: context,
-                              isScrollControlled: true,
-                              backgroundColor: Colors.transparent,
-                              builder: (context) => Container(
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFFF8F1E7),
-                                  borderRadius: BorderRadius.vertical(
-                                    top: Radius.circular(28),
-                                  ),
-                                ),
-                                child: BookingSheet(property: widget.property),
-                              ),
-                            );
-                          },
+                          onPressed: _openBookingSheet,
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             backgroundColor: const Color(0xFFB17B30),
@@ -399,6 +399,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           ),
                         ),
                       ),
+
                       const SizedBox(height: 12),
                     ],
                   ),
