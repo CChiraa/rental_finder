@@ -72,9 +72,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   void _showImageOptions() {
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
+    final Color primaryText = Theme.of(context).colorScheme.onSurface;
+
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFFF8F1E7),
+      backgroundColor: dark ? const Color(0xFF121212) : const Color(0xFFF8F1E7),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -89,7 +92,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   width: 44,
                   height: 5,
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade400,
+                    color: dark ? Colors.white24 : Colors.grey.shade400,
                     borderRadius: BorderRadius.circular(20),
                   ),
                 ),
@@ -101,7 +104,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                   title: Text(
                     'Take Photo',
-                    style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w600,
+                      color: primaryText,
+                    ),
                   ),
                   onTap: () {
                     Navigator.pop(context);
@@ -115,7 +121,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                   title: Text(
                     'Choose from Gallery',
-                    style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w600,
+                      color: primaryText,
+                    ),
                   ),
                   onTap: () {
                     Navigator.pop(context);
@@ -153,10 +162,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
+    final Color primaryText = Theme.of(context).colorScheme.onSurface;
+    final Color secondaryText = dark ? Colors.white70 : const Color(0xFF7B664C);
+    final Color screenBg = Theme.of(context).scaffoldBackgroundColor;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F1E7),
+      backgroundColor: screenBg,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF8F1E7),
+        backgroundColor: screenBg,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
         title: Text(
@@ -164,10 +179,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           style: GoogleFonts.cormorantGaramond(
             fontSize: 28,
             fontWeight: FontWeight.w700,
-            color: const Color(0xFF2C2621),
+            color: primaryText,
           ),
         ),
-        iconTheme: const IconThemeData(color: Color(0xFF2C2621)),
+        iconTheme: IconThemeData(color: primaryText),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
@@ -188,7 +203,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           color: const Color(0xFFD6B36A),
                           width: 2,
                         ),
-                        color: Colors.white,
+                        color: dark ? const Color(0xFF1E1E1E) : Colors.white,
                       ),
                       child: ClipOval(
                         child:
@@ -197,6 +212,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             ? Image.file(
                                 File(selectedImagePath!),
                                 fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return const Icon(
+                                    Icons.person_rounded,
+                                    size: 56,
+                                    color: Color(0xFFB8964F),
+                                  );
+                                },
                               )
                             : const Icon(
                                 Icons.person_rounded,
@@ -228,13 +250,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               const SizedBox(height: 12),
               Text(
                 'Tap to change profile picture',
-                style: GoogleFonts.inter(
-                  fontSize: 12.5,
-                  color: const Color(0xFF7B664C),
-                ),
+                style: GoogleFonts.inter(fontSize: 12.5, color: secondaryText),
               ),
               const SizedBox(height: 24),
               _buildTextField(
+                context: context,
                 controller: nameController,
                 label: 'Full Name',
                 icon: Icons.person_outline_rounded,
@@ -247,6 +267,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               const SizedBox(height: 14),
               _buildTextField(
+                context: context,
                 controller: emailController,
                 label: 'Email',
                 icon: Icons.email_outlined,
@@ -263,6 +284,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               const SizedBox(height: 14),
               _buildTextField(
+                context: context,
                 controller: phoneController,
                 label: 'Phone Number',
                 icon: Icons.phone_rounded,
@@ -279,6 +301,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               const SizedBox(height: 14),
               _buildTextField(
+                context: context,
                 controller: locationController,
                 label: 'Location',
                 icon: Icons.location_on_outlined,
@@ -335,16 +358,31 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Widget _buildTextField({
+    required BuildContext context,
     required TextEditingController controller,
     required String label,
     required IconData icon,
     required String? Function(String?) validator,
     TextInputType keyboardType = TextInputType.text,
   }) {
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.78),
+        color: dark ? const Color(0xFF1E1E1E) : Colors.white.withOpacity(0.78),
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: dark ? Colors.white.withOpacity(0.08) : Colors.transparent,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: dark
+                ? Colors.black.withOpacity(0.18)
+                : Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: TextFormField(
         controller: controller,
@@ -352,12 +390,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         keyboardType: keyboardType,
         style: GoogleFonts.inter(
           fontSize: 14,
-          color: const Color(0xFF2C2621),
+          color: Theme.of(context).colorScheme.onSurface,
           fontWeight: FontWeight.w500,
         ),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: GoogleFonts.inter(color: const Color(0xFF8B7355)),
+          labelStyle: GoogleFonts.inter(
+            color: dark ? Colors.white60 : const Color(0xFF8B7355),
+          ),
           prefixIcon: Icon(icon, color: const Color(0xFFB17B30)),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(20),

@@ -45,17 +45,25 @@ class _TenantSettingsScreenState extends State<TenantSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
+    final Color screenBg = Theme.of(context).scaffoldBackgroundColor;
+    final Color cardBg = dark
+        ? const Color(0xFF1E293B).withOpacity(0.92)
+        : Colors.white.withOpacity(0.9);
+    final Color primaryText = dark ? Colors.white : const Color(0xFF2C2621);
+    final Color secondaryText = dark ? Colors.white70 : const Color(0xFF7B664C);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F1E7),
+      backgroundColor: screenBg,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF8F1E7),
+        backgroundColor: screenBg,
         elevation: 0,
         title: Text(
           'Settings',
           style: GoogleFonts.cormorantGaramond(
             fontSize: 28,
             fontWeight: FontWeight.w700,
-            color: const Color(0xFF2C2621),
+            color: primaryText,
           ),
         ),
         actions: [
@@ -71,35 +79,69 @@ class _TenantSettingsScreenState extends State<TenantSettingsScreen> {
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          _switchTile(
-            title: 'Dark Mode',
-            subtitle: 'Enable dark appearance for the app',
-            value: isDarkMode,
-            onChanged: (value) => setState(() => isDarkMode = value),
-          ),
-          _switchTile(
-            title: 'Booking Notifications',
-            subtitle: 'Get alerts for booking updates',
-            value: bookingNotifications,
-            onChanged: (value) => setState(() => bookingNotifications = value),
-          ),
-          _switchTile(
-            title: 'Chat Notifications',
-            subtitle: 'Receive notifications for new messages',
-            value: chatNotifications,
-            onChanged: (value) => setState(() => chatNotifications = value),
-          ),
-          _switchTile(
-            title: 'Promotional Notifications',
-            subtitle: 'Receive deals and promotion updates',
-            value: promotionalNotifications,
-            onChanged: (value) =>
-                setState(() => promotionalNotifications = value),
-          ),
-        ],
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: dark
+              ? const LinearGradient(
+                  colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : const LinearGradient(
+                  colors: [
+                    Color(0xFFF8F1E7),
+                    Color(0xFFF2E6D5),
+                    Color(0xFFEAD8BE),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+        ),
+        child: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            _switchTile(
+              title: 'Dark Mode',
+              subtitle: dark
+                  ? 'Use navy blue dark theme'
+                  : 'Use light luxury theme',
+              value: isDarkMode,
+              onChanged: (value) => setState(() => isDarkMode = value),
+              cardBg: cardBg,
+              primaryText: primaryText,
+              secondaryText: secondaryText,
+            ),
+            _switchTile(
+              title: 'Booking Notifications',
+              subtitle: 'Get alerts for booking updates',
+              value: bookingNotifications,
+              onChanged: (value) =>
+                  setState(() => bookingNotifications = value),
+              cardBg: cardBg,
+              primaryText: primaryText,
+              secondaryText: secondaryText,
+            ),
+            _switchTile(
+              title: 'Chat Notifications',
+              subtitle: 'Receive notifications for new messages',
+              value: chatNotifications,
+              onChanged: (value) => setState(() => chatNotifications = value),
+              cardBg: cardBg,
+              primaryText: primaryText,
+              secondaryText: secondaryText,
+            ),
+            _switchTile(
+              title: 'Promotional Notifications',
+              subtitle: 'Receive deals and promotion updates',
+              value: promotionalNotifications,
+              onChanged: (value) =>
+                  setState(() => promotionalNotifications = value),
+              cardBg: cardBg,
+              primaryText: primaryText,
+              secondaryText: secondaryText,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -109,12 +151,15 @@ class _TenantSettingsScreenState extends State<TenantSettingsScreen> {
     required String subtitle,
     required bool value,
     required ValueChanged<bool> onChanged,
+    required Color cardBg,
+    required Color primaryText,
+    required Color secondaryText,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9),
+        color: cardBg,
         borderRadius: BorderRadius.circular(20),
       ),
       child: SwitchListTile(
@@ -125,15 +170,12 @@ class _TenantSettingsScreenState extends State<TenantSettingsScreen> {
           title,
           style: GoogleFonts.inter(
             fontWeight: FontWeight.w700,
-            color: const Color(0xFF2C2621),
+            color: primaryText,
           ),
         ),
         subtitle: Text(
           subtitle,
-          style: GoogleFonts.inter(
-            color: const Color(0xFF7B664C),
-            fontSize: 12.5,
-          ),
+          style: GoogleFonts.inter(color: secondaryText, fontSize: 12.5),
         ),
       ),
     );

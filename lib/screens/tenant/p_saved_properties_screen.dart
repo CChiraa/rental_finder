@@ -9,17 +9,28 @@ class TenantSavedPropertiesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
+    final Color primaryText = Theme.of(context).colorScheme.onSurface;
+    final Color secondaryText = dark ? Colors.white70 : const Color(0xFF7B664C);
+    final Color screenBg = Theme.of(context).scaffoldBackgroundColor;
+    final Color appBarBg = Theme.of(context).scaffoldBackgroundColor;
+    final Color cardBg = dark
+        ? const Color(0xFF1E1E1E)
+        : Colors.white.withOpacity(0.88);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F1E7),
+      backgroundColor: screenBg,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF8F1E7),
+        backgroundColor: appBarBg,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
+        iconTheme: IconThemeData(color: primaryText),
         title: Text(
           'Saved Properties',
           style: GoogleFonts.cormorantGaramond(
             fontSize: 28,
             fontWeight: FontWeight.w700,
-            color: const Color(0xFF2C2621),
+            color: primaryText,
           ),
         ),
       ),
@@ -27,10 +38,7 @@ class TenantSavedPropertiesScreen extends StatelessWidget {
           ? Center(
               child: Text(
                 'No saved properties yet.',
-                style: GoogleFonts.inter(
-                  color: const Color(0xFF7B664C),
-                  fontSize: 14,
-                ),
+                style: GoogleFonts.inter(color: secondaryText, fontSize: 14),
               ),
             )
           : ListView.separated(
@@ -39,6 +47,7 @@ class TenantSavedPropertiesScreen extends StatelessWidget {
               separatorBuilder: (_, __) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 final property = savedProperties[index];
+
                 return GestureDetector(
                   onTap: () {
                     Navigator.push(
@@ -52,8 +61,22 @@ class TenantSavedPropertiesScreen extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.88),
+                      color: cardBg,
                       borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: dark
+                            ? Colors.white.withOpacity(0.06)
+                            : Colors.transparent,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: dark
+                              ? Colors.black.withOpacity(0.18)
+                              : Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
                     child: Row(
                       children: [
@@ -64,6 +87,19 @@ class TenantSavedPropertiesScreen extends StatelessWidget {
                             width: 76,
                             height: 76,
                             fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                width: 76,
+                                height: 76,
+                                color: dark
+                                    ? const Color(0xFF2A2A2A)
+                                    : const Color(0xFFF3E8D7),
+                                child: const Icon(
+                                  Icons.image_not_supported_outlined,
+                                  color: Color(0xFFB17B30),
+                                ),
+                              );
+                            },
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -72,24 +108,24 @@ class TenantSavedPropertiesScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                property['title'],
+                                property['title'] ?? '',
                                 style: GoogleFonts.inter(
                                   fontWeight: FontWeight.w700,
                                   fontSize: 14,
-                                  color: const Color(0xFF2C2621),
+                                  color: primaryText,
                                 ),
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                property['location'],
+                                property['location'] ?? '',
                                 style: GoogleFonts.inter(
                                   fontSize: 12.5,
-                                  color: const Color(0xFF7B664C),
+                                  color: secondaryText,
                                 ),
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                property['price'],
+                                property['price'] ?? '',
                                 style: GoogleFonts.inter(
                                   fontWeight: FontWeight.w700,
                                   color: const Color(0xFFB17B30),

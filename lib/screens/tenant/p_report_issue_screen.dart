@@ -34,6 +34,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
   void _submitReport() {
     if (_formKey.currentState!.validate()) {
       FocusScope.of(context).unfocus();
+      final bool dark = Theme.of(context).brightness == Brightness.dark;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -62,30 +63,41 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
+    final Color primaryText = Theme.of(context).colorScheme.onSurface;
+    final Color secondaryText = dark ? Colors.white70 : const Color(0xFF7B664C);
+
+    final Gradient backgroundGradient = dark
+        ? const LinearGradient(
+            colors: [Color(0xFF0B1220), Color(0xFF111827), Color(0xFF172554)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          )
+        : const LinearGradient(
+            colors: [Color(0xFFF8F1E7), Color(0xFFF2E6D5), Color(0xFFEAD8BE)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          );
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F1E7),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF8F1E7),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        iconTheme: const IconThemeData(color: Color(0xFF2C2621)),
+        iconTheme: IconThemeData(color: primaryText),
         title: Text(
           'Report an Issue',
           style: GoogleFonts.cormorantGaramond(
             fontSize: 28,
             fontWeight: FontWeight.w700,
-            color: const Color(0xFF2C2621),
+            color: primaryText,
           ),
         ),
       ),
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFF8F1E7), Color(0xFFF2E6D5), Color(0xFFEAD8BE)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
+        decoration: BoxDecoration(gradient: backgroundGradient),
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
           child: Form(
@@ -93,18 +105,16 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildWarningCard(),
+                _buildWarningCard(context),
                 const SizedBox(height: 22),
-
-                _sectionLabel('Issue Type'),
+                _sectionLabel(context, 'Issue Type'),
                 const SizedBox(height: 10),
-                _buildDropdownField(),
-
+                _buildDropdownField(context),
                 const SizedBox(height: 20),
-
-                _sectionLabel('Subject'),
+                _sectionLabel(context, 'Subject'),
                 const SizedBox(height: 10),
                 _buildTextField(
+                  context: context,
                   controller: subjectController,
                   hintText: 'Enter a short subject',
                   maxLines: 1,
@@ -118,12 +128,11 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                     return null;
                   },
                 ),
-
                 const SizedBox(height: 20),
-
-                _sectionLabel('Details'),
+                _sectionLabel(context, 'Details'),
                 const SizedBox(height: 10),
                 _buildTextField(
+                  context: context,
                   controller: detailsController,
                   hintText: 'Describe the issue clearly',
                   maxLines: 6,
@@ -137,14 +146,19 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                     return null;
                   },
                 ),
-
                 const SizedBox(height: 18),
-
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.72),
+                    color: dark
+                        ? Colors.white.withOpacity(0.06)
+                        : Colors.white.withOpacity(0.72),
                     borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: dark
+                          ? Colors.white.withOpacity(0.08)
+                          : Colors.transparent,
+                    ),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -161,16 +175,14 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                           style: GoogleFonts.inter(
                             fontSize: 12.5,
                             height: 1.5,
-                            color: const Color(0xFF7B664C),
+                            color: secondaryText,
                           ),
                         ),
                       ),
                     ],
                   ),
                 ),
-
                 const SizedBox(height: 28),
-
                 SizedBox(
                   width: double.infinity,
                   height: 56,
@@ -220,16 +232,25 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
     );
   }
 
-  Widget _buildWarningCard() {
+  Widget _buildWarningCard(BuildContext context) {
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF6EF),
+        color: dark ? const Color(0xFF1E1E1E) : const Color(0xFFFFF6EF),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE6C28A), width: 1),
+        border: Border.all(
+          color: dark
+              ? Colors.white.withOpacity(0.08)
+              : const Color(0xFFE6C28A),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: dark
+                ? Colors.black.withOpacity(0.18)
+                : Colors.black.withOpacity(0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -249,7 +270,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
               'Use this form to report serious issues to the admin team. Please provide clear and accurate information so we can review the case properly.',
               style: GoogleFonts.inter(
                 fontSize: 13,
-                color: const Color(0xFF5E4B36),
+                color: dark ? Colors.white70 : const Color(0xFF5E4B36),
                 height: 1.5,
               ),
             ),
@@ -259,43 +280,59 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
     );
   }
 
-  Widget _sectionLabel(String title) {
+  Widget _sectionLabel(BuildContext context, String title) {
     return Text(
       title,
       style: GoogleFonts.inter(
         fontSize: 14.5,
         fontWeight: FontWeight.w700,
-        color: const Color(0xFF2C2621),
+        color: Theme.of(context).colorScheme.onSurface,
       ),
     );
   }
 
-  Widget _buildDropdownField() {
+  Widget _buildDropdownField(BuildContext context) {
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.82),
+        color: dark ? const Color(0xFF1E1E1E) : Colors.white.withOpacity(0.82),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: dark
+                ? Colors.black.withOpacity(0.18)
+                : Colors.black.withOpacity(0.04),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
         ],
+        border: Border.all(
+          color: dark ? Colors.white.withOpacity(0.08) : Colors.transparent,
+        ),
       ),
       child: DropdownButtonFormField<String>(
         value: selectedIssue,
         decoration: const InputDecoration(border: InputBorder.none),
         style: GoogleFonts.inter(
           fontSize: 14,
-          color: const Color(0xFF2C2621),
+          color: Theme.of(context).colorScheme.onSurface,
           fontWeight: FontWeight.w500,
         ),
-        dropdownColor: Colors.white,
+        dropdownColor: dark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(16),
+        iconEnabledColor: dark ? Colors.white70 : const Color(0xFF2C2621),
         items: issueTypes.map((issue) {
-          return DropdownMenuItem<String>(value: issue, child: Text(issue));
+          return DropdownMenuItem<String>(
+            value: issue,
+            child: Text(
+              issue,
+              style: GoogleFonts.inter(
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+          );
         }).toList(),
         onChanged: (value) {
           setState(() {
@@ -307,22 +344,30 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
   }
 
   Widget _buildTextField({
+    required BuildContext context,
     required TextEditingController controller,
     required String hintText,
     required int maxLines,
     required String? Function(String?) validator,
   }) {
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.82),
+        color: dark ? const Color(0xFF1E1E1E) : Colors.white.withOpacity(0.82),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: dark
+                ? Colors.black.withOpacity(0.18)
+                : Colors.black.withOpacity(0.04),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
         ],
+        border: Border.all(
+          color: dark ? Colors.white.withOpacity(0.08) : Colors.transparent,
+        ),
       ),
       child: TextFormField(
         controller: controller,
@@ -330,13 +375,13 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
         validator: validator,
         style: GoogleFonts.inter(
           fontSize: 14,
-          color: const Color(0xFF2C2621),
+          color: Theme.of(context).colorScheme.onSurface,
           fontWeight: FontWeight.w500,
         ),
         decoration: InputDecoration(
           hintText: hintText,
           hintStyle: GoogleFonts.inter(
-            color: const Color(0xFF9B8A76),
+            color: dark ? Colors.white54 : const Color(0xFF9B8A76),
             fontSize: 13.5,
           ),
           contentPadding: const EdgeInsets.symmetric(

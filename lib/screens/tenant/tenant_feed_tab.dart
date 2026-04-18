@@ -17,59 +17,143 @@ class TenantFeedTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
-      children: [
-        Text(
-          'Feed',
-          style: GoogleFonts.cormorantGaramond(
-            fontSize: 34,
-            fontWeight: FontWeight.w700,
-            color: const Color(0xFF2B2118),
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          'Latest property posts from landlords',
-          style: GoogleFonts.inter(
-            fontSize: 14,
-            color: const Color(0xFF6F5A40),
-          ),
-        ),
-        const SizedBox(height: 16),
-        ...properties.map((property) => _facebookStyleFeedCard(property)),
-      ],
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
+
+    final Color primaryText = dark ? Colors.white : const Color(0xFF2C2621);
+    final Color secondaryText = dark ? Colors.white70 : const Color(0xFF7B664C);
+    final Color mutedText = dark ? Colors.white60 : const Color(0xFF8B7355);
+
+    final Gradient backgroundGradient = dark
+        ? const LinearGradient(
+            colors: [Color(0xFF0F172A), Color(0xFF162033), Color(0xFF1E293B)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          )
+        : const LinearGradient(
+            colors: [Color(0xFFF8F1E7), Color(0xFFF2E6D5), Color(0xFFEAD8BE)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          );
+
+    return Container(
+      decoration: BoxDecoration(gradient: backgroundGradient),
+      child: properties.isEmpty
+          ? Center(
+              child: Text(
+                "No property posts available yet",
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  color: secondaryText,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            )
+          : ListView(
+              padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+              children: [
+                Text(
+                  'Feed',
+                  style: GoogleFonts.cormorantGaramond(
+                    fontSize: 34,
+                    fontWeight: FontWeight.w700,
+                    color: primaryText,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Latest property posts from landlords',
+                  style: GoogleFonts.inter(fontSize: 14, color: secondaryText),
+                ),
+                const SizedBox(height: 18),
+                ...properties.map(
+                  (property) => _buildFeedCard(context, property),
+                ),
+              ],
+            ),
     );
   }
 
-  Widget _facebookStyleFeedCard(Map<String, dynamic> property) {
-    final int propertyId = property['id'];
+  Widget _buildFeedCard(BuildContext context, Map<String, dynamic> property) {
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
+
+    final int propertyId = property['id'] ?? 0;
     final bool favorite = isFavorite(propertyId);
 
+    final Color primaryText = dark ? Colors.white : const Color(0xFF2C2621);
+    final Color secondaryText = dark ? Colors.white70 : const Color(0xFF7B664C);
+    final Color mutedText = dark ? Colors.white60 : const Color(0xFF8B7355);
+
+    final Color cardBg = dark
+        ? const Color(0xFF1E293B).withOpacity(0.88)
+        : Colors.white.withOpacity(0.92);
+
+    final Color headerBg = dark
+        ? const Color(0xFF243247).withOpacity(0.9)
+        : const Color(0xFFF8F1E7).withOpacity(0.95);
+
+    final Color tagBg = dark
+        ? const Color(0xFFD6B36A).withOpacity(0.14)
+        : const Color(0xFFF3E8D7);
+
+    final Color dividerColor = dark
+        ? Colors.white.withOpacity(0.08)
+        : Colors.black.withOpacity(0.08);
+
+    final Color goldColor = const Color(0xFFB8964F);
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 18),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
+        color: cardBg,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: dark
+              ? const Color(0xFFD6B36A).withOpacity(0.08)
+              : Colors.white.withOpacity(0.35),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 14,
-            offset: const Offset(0, 8),
+            color: dark
+                ? Colors.black.withOpacity(0.24)
+                : const Color(0xFFD6B36A).withOpacity(0.14),
+            blurRadius: 22,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
+          // top header
+          Container(
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+            decoration: BoxDecoration(
+              color: headerBg,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(24),
+                topRight: Radius.circular(24),
+              ),
+            ),
             child: Row(
               children: [
-                const CircleAvatar(
-                  radius: 22,
-                  backgroundColor: Color(0xFFE6BC6D),
-                  child: Icon(Icons.home_work_rounded, color: Colors.white),
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: dark
+                        ? const Color(0xFF243247)
+                        : Colors.white.withOpacity(0.9),
+                    border: Border.all(
+                      color: const Color(0xFFD6B36A),
+                      width: 1.4,
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.home_work_rounded,
+                    color: Color(0xFFB8964F),
+                    size: 24,
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -81,7 +165,7 @@ class TenantFeedTab extends StatelessWidget {
                         style: GoogleFonts.inter(
                           fontSize: 14.5,
                           fontWeight: FontWeight.w700,
-                          color: const Color(0xFF2B2118),
+                          color: primaryText,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -91,15 +175,11 @@ class TenantFeedTab extends StatelessWidget {
                             property['time'] ?? '2h ago',
                             style: GoogleFonts.inter(
                               fontSize: 12,
-                              color: const Color(0xFF8F7A61),
+                              color: mutedText,
                             ),
                           ),
                           const SizedBox(width: 6),
-                          const Icon(
-                            Icons.public,
-                            size: 14,
-                            color: Color(0xFF8F7A61),
-                          ),
+                          Icon(Icons.public, size: 14, color: mutedText),
                         ],
                       ),
                     ],
@@ -109,110 +189,141 @@ class TenantFeedTab extends StatelessWidget {
                   onPressed: () => onToggleFavorite(propertyId),
                   icon: Icon(
                     favorite ? Icons.favorite : Icons.favorite_border_rounded,
-                    color: favorite
-                        ? Colors.redAccent
-                        : const Color(0xFFB17B30),
+                    color: favorite ? Colors.redAccent : goldColor,
                   ),
                 ),
               ],
             ),
           ),
+
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '🏡 ${property['title']} now available at ${property['location']}',
+                  '🏡 ${property['title'] ?? 'Property'} now available at ${property['location'] ?? 'Unknown location'}',
                   style: GoogleFonts.inter(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFF2B2118),
+                    color: primaryText,
                     height: 1.5,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 Text(
-                  property['description'],
+                  property['description'] ?? '',
                   style: GoogleFonts.inter(
                     fontSize: 13,
-                    color: const Color(0xFF6F5A40),
+                    color: secondaryText,
                     height: 1.5,
                   ),
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    _smallTag(property['type']),
-                    _smallTag(property['stayCategory']),
+                    _smallTag(
+                      text: property['type'] ?? '',
+                      bgColor: tagBg,
+                      textColor: dark
+                          ? const Color(0xFFEAD8BE)
+                          : const Color(0xFF8E6A39),
+                    ),
+                    _smallTag(
+                      text: property['stayCategory'] ?? '',
+                      bgColor: tagBg,
+                      textColor: dark
+                          ? const Color(0xFFEAD8BE)
+                          : const Color(0xFF8E6A39),
+                    ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 Text(
-                  property['price'],
+                  property['price'] ?? '',
                   style: GoogleFonts.inter(
-                    fontSize: 14,
+                    fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFFB17B30),
+                    color: goldColor,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 12),
+
           ClipRRect(
             borderRadius: BorderRadius.circular(0),
             child: Image.asset(
-              property['image'],
+              property['image'] ?? '',
               width: double.infinity,
               height: 220,
               fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  height: 220,
+                  width: double.infinity,
+                  color: dark
+                      ? const Color(0xFF243247)
+                      : const Color(0xFFF3E8D7),
+                  alignment: Alignment.center,
+                  child: const Icon(
+                    Icons.image_not_supported_outlined,
+                    size: 40,
+                    color: Color(0xFFB8964F),
+                  ),
+                );
+              },
             ),
           ),
+
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 6),
             child: Row(
               children: [
                 Text(
                   '${favorite ? 25 : 24} interested',
-                  style: GoogleFonts.inter(
-                    fontSize: 12.5,
-                    color: const Color(0xFF8F7A61),
-                  ),
+                  style: GoogleFonts.inter(fontSize: 12.5, color: mutedText),
                 ),
                 const Spacer(),
                 Text(
                   '8 comments',
-                  style: GoogleFonts.inter(
-                    fontSize: 12.5,
-                    color: const Color(0xFF8F7A61),
-                  ),
+                  style: GoogleFonts.inter(fontSize: 12.5, color: mutedText),
                 ),
               ],
             ),
           ),
-          Divider(height: 1, color: Colors.grey.withOpacity(0.2)),
+
+          Divider(height: 1, color: dividerColor),
+
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _feedAction(
-                  favorite ? Icons.favorite : Icons.favorite_border_rounded,
-                  'Interested',
+                  icon: favorite
+                      ? Icons.favorite
+                      : Icons.favorite_border_rounded,
+                  label: 'Interested',
                   onTap: () => onToggleFavorite(propertyId),
-                  color: favorite ? Colors.redAccent : const Color(0xFF7B664C),
+                  color: favorite ? Colors.redAccent : mutedText,
                 ),
                 _feedAction(
-                  Icons.chat_bubble_outline_rounded,
-                  'Comment',
+                  icon: Icons.chat_bubble_outline_rounded,
+                  label: 'Comment',
                   onTap: () {},
+                  color: mutedText,
                 ),
-                _feedAction(Icons.send_outlined, 'Share', onTap: () {}),
+                _feedAction(
+                  icon: Icons.send_outlined,
+                  label: 'Share',
+                  onTap: () {},
+                  color: mutedText,
+                ),
               ],
             ),
           ),
@@ -221,11 +332,17 @@ class TenantFeedTab extends StatelessWidget {
     );
   }
 
-  Widget _smallTag(String text) {
+  Widget _smallTag({
+    required String text,
+    required Color bgColor,
+    required Color textColor,
+  }) {
+    if (text.trim().isEmpty) return const SizedBox.shrink();
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3E8D7),
+        color: bgColor,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
@@ -233,17 +350,17 @@ class TenantFeedTab extends StatelessWidget {
         style: GoogleFonts.inter(
           fontSize: 11.5,
           fontWeight: FontWeight.w600,
-          color: const Color(0xFF8E6A39),
+          color: textColor,
         ),
       ),
     );
   }
 
-  Widget _feedAction(
-    IconData icon,
-    String label, {
+  Widget _feedAction({
+    required IconData icon,
+    required String label,
     required VoidCallback onTap,
-    Color color = const Color(0xFF7B664C),
+    required Color color,
   }) {
     return TextButton.icon(
       onPressed: onTap,
@@ -255,6 +372,11 @@ class TenantFeedTab extends StatelessWidget {
           fontWeight: FontWeight.w600,
           fontSize: 13,
         ),
+      ),
+      style: TextButton.styleFrom(
+        foregroundColor: color,
+        overlayColor: color.withOpacity(0.08),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
     );
   }

@@ -249,7 +249,16 @@ class _TenantMapTabState extends State<TenantMapTab> {
 
   @override
   Widget build(BuildContext context) {
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
     final shownProperties = filteredProperties;
+    final Color primaryText = Theme.of(context).colorScheme.onSurface;
+    final Color secondaryText = dark ? Colors.white70 : const Color(0xFF6F5A40);
+    final Color searchBg = dark
+        ? const Color(0xFF1E1E1E)
+        : Colors.white.withOpacity(0.94);
+    final Color cardShadow = dark
+        ? Colors.black.withOpacity(0.20)
+        : Colors.black.withOpacity(0.05);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
@@ -260,7 +269,7 @@ class _TenantMapTabState extends State<TenantMapTab> {
             style: GoogleFonts.cormorantGaramond(
               fontSize: 34,
               fontWeight: FontWeight.w700,
-              color: const Color(0xFF2B2118),
+              color: primaryText,
             ),
           ),
           const SizedBox(height: 8),
@@ -269,7 +278,7 @@ class _TenantMapTabState extends State<TenantMapTab> {
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               fontSize: 14,
-              color: const Color(0xFF6F5A40),
+              color: secondaryText,
               height: 1.5,
             ),
           ),
@@ -277,15 +286,20 @@ class _TenantMapTabState extends State<TenantMapTab> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.94),
+              color: searchBg,
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: cardShadow,
                   blurRadius: 14,
                   offset: const Offset(0, 6),
                 ),
               ],
+              border: Border.all(
+                color: dark
+                    ? Colors.white.withOpacity(0.08)
+                    : Colors.transparent,
+              ),
             ),
             child: TextField(
               controller: searchController,
@@ -294,6 +308,7 @@ class _TenantMapTabState extends State<TenantMapTab> {
                   searchQuery = value;
                 });
               },
+              style: TextStyle(color: dark ? Colors.white : Colors.black87),
               decoration: InputDecoration(
                 icon: const Icon(
                   Icons.search_rounded,
@@ -301,7 +316,7 @@ class _TenantMapTabState extends State<TenantMapTab> {
                 ),
                 hintText: 'Search by title or location',
                 hintStyle: GoogleFonts.inter(
-                  color: const Color(0xFF9A8B78),
+                  color: dark ? Colors.white54 : const Color(0xFF9A8B78),
                   fontSize: 13.5,
                 ),
                 border: InputBorder.none,
@@ -312,9 +327,17 @@ class _TenantMapTabState extends State<TenantMapTab> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _legendDot(const Color(0xFFE91E63), 'Properties'),
+              _legendDot(
+                const Color(0xFFE91E63),
+                'Properties',
+                labelColor: secondaryText,
+              ),
               const SizedBox(width: 16),
-              _legendDot(const Color(0xFF2196F3), 'Public Transport'),
+              _legendDot(
+                const Color(0xFF2196F3),
+                'Public Transport',
+                labelColor: secondaryText,
+              ),
             ],
           ),
           const SizedBox(height: 14),
@@ -325,7 +348,9 @@ class _TenantMapTabState extends State<TenantMapTab> {
               borderRadius: BorderRadius.circular(28),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.06),
+                  color: dark
+                      ? Colors.black.withOpacity(0.18)
+                      : Colors.black.withOpacity(0.06),
                   blurRadius: 16,
                   offset: const Offset(0, 8),
                 ),
@@ -356,7 +381,7 @@ class _TenantMapTabState extends State<TenantMapTab> {
                       'No properties found.',
                       style: GoogleFonts.inter(
                         fontSize: 14,
-                        color: const Color(0xFF6F5A40),
+                        color: secondaryText,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -384,13 +409,19 @@ class _TenantMapTabState extends State<TenantMapTab> {
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? const Color(0xFFF3E8D7)
-                                : Colors.white.withOpacity(0.94),
+                                ? (dark
+                                      ? const Color(0xFF2A2A2A)
+                                      : const Color(0xFFF3E8D7))
+                                : (dark
+                                      ? const Color(0xFF1E1E1E)
+                                      : Colors.white.withOpacity(0.94)),
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
                               color: isSelected
                                   ? const Color(0xFFB17B30)
-                                  : Colors.transparent,
+                                  : (dark
+                                        ? Colors.white.withOpacity(0.06)
+                                        : Colors.transparent),
                               width: 1.2,
                             ),
                           ),
@@ -402,7 +433,9 @@ class _TenantMapTabState extends State<TenantMapTab> {
                                     width: 44,
                                     height: 44,
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFFF8F1E7),
+                                      color: dark
+                                          ? const Color(0xFF2A2A2A)
+                                          : const Color(0xFFF8F1E7),
                                       borderRadius: BorderRadius.circular(14),
                                     ),
                                     child: const Icon(
@@ -421,7 +454,7 @@ class _TenantMapTabState extends State<TenantMapTab> {
                                           style: GoogleFonts.inter(
                                             fontWeight: FontWeight.w700,
                                             fontSize: 14,
-                                            color: const Color(0xFF2B2118),
+                                            color: primaryText,
                                           ),
                                         ),
                                         const SizedBox(height: 4),
@@ -429,7 +462,9 @@ class _TenantMapTabState extends State<TenantMapTab> {
                                           property['location'] ?? '',
                                           style: GoogleFonts.inter(
                                             fontSize: 12.5,
-                                            color: const Color(0xFF7B664C),
+                                            color: dark
+                                                ? Colors.white70
+                                                : const Color(0xFF7B664C),
                                           ),
                                         ),
                                       ],
@@ -455,7 +490,9 @@ class _TenantMapTabState extends State<TenantMapTab> {
                                     vertical: 10,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFEFF6FF),
+                                    color: dark
+                                        ? const Color(0xFF0F2238)
+                                        : const Color(0xFFEFF6FF),
                                     borderRadius: BorderRadius.circular(14),
                                   ),
                                   child: Row(
@@ -472,7 +509,9 @@ class _TenantMapTabState extends State<TenantMapTab> {
                                           style: GoogleFonts.inter(
                                             fontSize: 12.5,
                                             fontWeight: FontWeight.w600,
-                                            color: const Color(0xFF2B4A66),
+                                            color: dark
+                                                ? const Color(0xFF9DB7E8)
+                                                : const Color(0xFF2B4A66),
                                           ),
                                         ),
                                       ),
@@ -492,7 +531,7 @@ class _TenantMapTabState extends State<TenantMapTab> {
     );
   }
 
-  Widget _legendDot(Color color, String label) {
+  Widget _legendDot(Color color, String label, {required Color labelColor}) {
     return Row(
       children: [
         Container(
@@ -506,7 +545,7 @@ class _TenantMapTabState extends State<TenantMapTab> {
           style: GoogleFonts.inter(
             fontSize: 12.5,
             fontWeight: FontWeight.w600,
-            color: const Color(0xFF6F5A40),
+            color: labelColor,
           ),
         ),
       ],

@@ -31,12 +31,21 @@ class _SignInScreenState extends State<SignInScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      resizeToAvoidBottomInset: true,
-      body: Container(
-        width: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
+    final ColorScheme colorScheme = Theme.of(context).colorScheme;
+
+    final Gradient backgroundGradient = dark
+        ? const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF0B1220),
+              Color(0xFF111827),
+              Color(0xFF172554),
+              Color(0xFF0F172A),
+            ],
+          )
+        : const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
@@ -45,12 +54,31 @@ class _SignInScreenState extends State<SignInScreen> {
               Color(0xFFEAD8BE),
               Color(0xFFF7EFE5),
             ],
-          ),
-        ),
+          );
+
+    final Color cardColor = dark
+        ? Colors.white.withOpacity(0.08)
+        : Colors.white.withOpacity(0.55);
+
+    final Color borderColor = dark
+        ? Colors.white.withOpacity(0.12)
+        : Colors.white.withOpacity(0.70);
+
+    final Color textPrimary = colorScheme.onSurface;
+    final Color textSecondary = dark ? Colors.white70 : const Color(0xFF8B7355);
+
+    final Color subtleText = dark ? Colors.white60 : const Color(0xFF6F5A40);
+
+    return Scaffold(
+      resizeToAvoidBottomInset: true,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      body: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(gradient: backgroundGradient),
         child: Stack(
           children: [
-            _buildBackgroundGlowTopRight(),
-            _buildBackgroundGlowBottomLeft(),
+            _buildBackgroundGlowTopRight(dark),
+            _buildBackgroundGlowBottomLeft(dark),
             SafeArea(
               child: Padding(
                 padding: const EdgeInsets.symmetric(
@@ -59,7 +87,7 @@ class _SignInScreenState extends State<SignInScreen> {
                 ),
                 child: Column(
                   children: [
-                    _buildTopBar(context),
+                    _buildTopBar(context, dark),
                     const SizedBox(height: 10),
                     Expanded(
                       child: SingleChildScrollView(
@@ -67,9 +95,21 @@ class _SignInScreenState extends State<SignInScreen> {
                         child: Column(
                           children: [
                             const SizedBox(height: 8),
-                            _buildHeader(),
+                            _buildHeader(
+                              dark: dark,
+                              primaryText: textPrimary,
+                              secondaryText: textSecondary,
+                            ),
                             const SizedBox(height: 22),
-                            _buildFormCard(),
+                            _buildFormCard(
+                              context: context,
+                              dark: dark,
+                              cardColor: cardColor,
+                              borderColor: borderColor,
+                              primaryText: textPrimary,
+                              secondaryText: textSecondary,
+                              subtleText: subtleText,
+                            ),
                             const SizedBox(height: 20),
                           ],
                         ),
@@ -85,23 +125,27 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 
-  Widget _buildTopBar(BuildContext context) {
+  Widget _buildTopBar(BuildContext context, bool dark) {
     return Row(
       children: [
         Container(
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.55),
+            color: dark
+                ? Colors.white.withOpacity(0.08)
+                : Colors.white.withOpacity(0.55),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: const Color(0xFFD6B36A).withOpacity(0.45),
+              color: dark
+                  ? Colors.white.withOpacity(0.10)
+                  : const Color(0xFFD6B36A).withOpacity(0.45),
             ),
           ),
           child: IconButton(
             onPressed: () => Navigator.pop(context),
-            icon: const Icon(
+            icon: Icon(
               Icons.arrow_back_ios_new_rounded,
               size: 18,
-              color: Color(0xFF7A5B33),
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
         ),
@@ -109,12 +153,22 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader({
+    required bool dark,
+    required Color primaryText,
+    required Color secondaryText,
+  }) {
     return Column(
       children: [
         ShaderMask(
-          shaderCallback: (bounds) => const LinearGradient(
-            colors: [Color(0xFF2B2118), Color(0xFF8E6A39), Color(0xFFD8AF5B)],
+          shaderCallback: (bounds) => LinearGradient(
+            colors: dark
+                ? const [Colors.white, Color(0xFF9DB7E8), Color(0xFFE6BC6D)]
+                : const [
+                    Color(0xFF2B2118),
+                    Color(0xFF8E6A39),
+                    Color(0xFFD8AF5B),
+                  ],
           ).createShader(bounds),
           child: Text(
             'Welcome Back',
@@ -134,7 +188,7 @@ class _SignInScreenState extends State<SignInScreen> {
           textAlign: TextAlign.center,
           style: GoogleFonts.inter(
             fontSize: 13.5,
-            color: const Color(0xFF8B7355),
+            color: secondaryText,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -142,17 +196,27 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 
-  Widget _buildFormCard() {
+  Widget _buildFormCard({
+    required BuildContext context,
+    required bool dark,
+    required Color cardColor,
+    required Color borderColor,
+    required Color primaryText,
+    required Color secondaryText,
+    required Color subtleText,
+  }) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.55),
+        color: cardColor,
         borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: Colors.white.withOpacity(0.7), width: 1),
+        border: Border.all(color: borderColor, width: 1),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFB88C45).withOpacity(0.12),
+            color: dark
+                ? Colors.black.withOpacity(0.22)
+                : const Color(0xFFB88C45).withOpacity(0.12),
             blurRadius: 28,
             offset: const Offset(0, 14),
           ),
@@ -168,16 +232,16 @@ class _SignInScreenState extends State<SignInScreen> {
               style: GoogleFonts.inter(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: const Color(0xFF6C5338),
+                color: secondaryText,
               ),
             ),
             const SizedBox(height: 12),
-            _buildRoleSelector(),
+            _buildRoleSelector(dark),
             const SizedBox(height: 20),
             _luxuryField(
-              controller: emailController,
               label: 'Email',
               icon: Icons.email_outlined,
+              controller: emailController,
               keyboardType: TextInputType.emailAddress,
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -191,9 +255,9 @@ class _SignInScreenState extends State<SignInScreen> {
             ),
             const SizedBox(height: 14),
             _luxuryField(
-              controller: passwordController,
               label: 'Password',
               icon: Icons.lock_outline_rounded,
+              controller: passwordController,
               obscureText: obscurePassword,
               suffixIcon: IconButton(
                 onPressed: () {
@@ -205,7 +269,7 @@ class _SignInScreenState extends State<SignInScreen> {
                   obscurePassword
                       ? Icons.visibility_off_outlined
                       : Icons.visibility_outlined,
-                  color: const Color(0xFF9C7A4B),
+                  color: dark ? Colors.white70 : const Color(0xFF9C7A4B),
                 ),
               ),
               validator: (value) {
@@ -222,33 +286,40 @@ class _SignInScreenState extends State<SignInScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Transform.translate(
-                      offset: const Offset(-6, 0),
-                      child: Checkbox(
-                        value: rememberPassword,
-                        activeColor: const Color(0xFFC69545),
-                        checkColor: Colors.white,
-                        side: BorderSide(
-                          color: const Color(0xFFD6B36A).withOpacity(0.8),
+                Flexible(
+                  child: Row(
+                    children: [
+                      Transform.translate(
+                        offset: const Offset(-6, 0),
+                        child: Checkbox(
+                          value: rememberPassword,
+                          activeColor: const Color(0xFFC69545),
+                          checkColor: Colors.white,
+                          side: BorderSide(
+                            color: dark
+                                ? Colors.white54
+                                : const Color(0xFFD6B36A).withOpacity(0.8),
+                          ),
+                          onChanged: (value) {
+                            setState(() {
+                              rememberPassword = value ?? false;
+                            });
+                          },
                         ),
-                        onChanged: (value) {
-                          setState(() {
-                            rememberPassword = value ?? false;
-                          });
-                        },
                       ),
-                    ),
-                    Text(
-                      'Remember me',
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        color: const Color(0xFF6A543B),
-                        fontWeight: FontWeight.w500,
+                      Flexible(
+                        child: Text(
+                          'Remember me',
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            color: secondaryText,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 GestureDetector(
                   onTap: () {
@@ -271,34 +342,46 @@ class _SignInScreenState extends State<SignInScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            _primaryButton(),
+            _primaryButton(context),
             const SizedBox(height: 22),
-            _dividerText(),
+            _dividerText(secondaryText, dark),
             const SizedBox(height: 18),
-            _googleButton(),
+            _googleButton(dark),
             const SizedBox(height: 20),
-            _signupRedirect(),
+            _signupRedirect(subtleText),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildRoleSelector() {
+  Widget _buildRoleSelector(bool dark) {
     return Row(
       children: [
         Expanded(
-          child: _roleCard(role: 'Tenant', icon: Icons.person_outline_rounded),
+          child: _roleCard(
+            role: 'Tenant',
+            icon: Icons.person_outline_rounded,
+            dark: dark,
+          ),
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: _roleCard(role: 'Landlord', icon: Icons.home_work_outlined),
+          child: _roleCard(
+            role: 'Landlord',
+            icon: Icons.home_work_outlined,
+            dark: dark,
+          ),
         ),
       ],
     );
   }
 
-  Widget _roleCard({required String role, required IconData icon}) {
+  Widget _roleCard({
+    required String role,
+    required IconData icon,
+    required bool dark,
+  }) {
     final bool isSelected = selectedRole == role;
 
     return GestureDetector(
@@ -318,10 +401,16 @@ class _SignInScreenState extends State<SignInScreen> {
                   colors: [Color(0xFFE6BC6D), Color(0xFFBE8233)],
                 )
               : null,
-          color: isSelected ? null : Colors.white.withOpacity(0.7),
+          color: isSelected
+              ? null
+              : dark
+              ? Colors.white.withOpacity(0.06)
+              : Colors.white.withOpacity(0.7),
           border: Border.all(
             color: isSelected
                 ? Colors.transparent
+                : dark
+                ? Colors.white.withOpacity(0.12)
                 : const Color(0xFFD6B36A).withOpacity(0.65),
             width: 1.2,
           ),
@@ -339,14 +428,22 @@ class _SignInScreenState extends State<SignInScreen> {
           children: [
             Icon(
               icon,
-              color: isSelected ? Colors.white : const Color(0xFF8D6A3B),
+              color: isSelected
+                  ? Colors.white
+                  : dark
+                  ? Colors.white70
+                  : const Color(0xFF8D6A3B),
               size: 24,
             ),
             const SizedBox(height: 8),
             Text(
               role,
               style: GoogleFonts.inter(
-                color: isSelected ? Colors.white : const Color(0xFF6B5338),
+                color: isSelected
+                    ? Colors.white
+                    : dark
+                    ? Colors.white70
+                    : const Color(0xFF6B5338),
                 fontWeight: FontWeight.w600,
                 fontSize: 13.5,
               ),
@@ -366,25 +463,32 @@ class _SignInScreenState extends State<SignInScreen> {
     Widget? suffixIcon,
     TextInputType keyboardType = TextInputType.text,
   }) {
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
+
     return TextFormField(
       controller: controller,
       obscureText: obscureText,
       keyboardType: keyboardType,
       validator: validator,
       style: GoogleFonts.inter(
-        color: const Color(0xFF4A3B2B),
+        color: Theme.of(context).colorScheme.onSurface,
         fontWeight: FontWeight.w500,
       ),
       decoration: InputDecoration(
         labelText: label,
         labelStyle: GoogleFonts.inter(
-          color: const Color(0xFF8B7355),
+          color: dark ? Colors.white70 : const Color(0xFF8B7355),
           fontWeight: FontWeight.w500,
         ),
-        prefixIcon: Icon(icon, color: const Color(0xFFC28F41)),
+        prefixIcon: Icon(
+          icon,
+          color: dark ? const Color(0xFF9DB7E8) : const Color(0xFFC28F41),
+        ),
         suffixIcon: suffixIcon,
         filled: true,
-        fillColor: Colors.white.withOpacity(0.82),
+        fillColor: dark
+            ? Colors.white.withOpacity(0.06)
+            : Colors.white.withOpacity(0.82),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 18,
@@ -392,12 +496,17 @@ class _SignInScreenState extends State<SignInScreen> {
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
           borderSide: BorderSide(
-            color: const Color(0xFFD9BC8A).withOpacity(0.55),
+            color: dark
+                ? Colors.white.withOpacity(0.10)
+                : const Color(0xFFD9BC8A).withOpacity(0.55),
           ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(color: Color(0xFFC69545), width: 1.4),
+          borderSide: BorderSide(
+            color: dark ? const Color(0xFF9DB7E8) : const Color(0xFFC69545),
+            width: 1.4,
+          ),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
@@ -411,7 +520,7 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 
-  Widget _primaryButton() {
+  Widget _primaryButton(BuildContext context) {
     return SizedBox(
       width: double.infinity,
       height: 58,
@@ -471,12 +580,14 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 
-  Widget _dividerText() {
+  Widget _dividerText(Color secondaryText, bool dark) {
     return Row(
       children: [
         Expanded(
           child: Divider(
-            color: const Color(0xFFD7B98A).withOpacity(0.7),
+            color: dark
+                ? Colors.white.withOpacity(0.14)
+                : const Color(0xFFD7B98A).withOpacity(0.7),
             thickness: 1,
           ),
         ),
@@ -486,14 +597,16 @@ class _SignInScreenState extends State<SignInScreen> {
             'or continue with',
             style: GoogleFonts.inter(
               fontSize: 12.5,
-              color: const Color(0xFF8B7355),
+              color: secondaryText,
               fontWeight: FontWeight.w500,
             ),
           ),
         ),
         Expanded(
           child: Divider(
-            color: const Color(0xFFD7B98A).withOpacity(0.7),
+            color: dark
+                ? Colors.white.withOpacity(0.14)
+                : const Color(0xFFD7B98A).withOpacity(0.7),
             thickness: 1,
           ),
         ),
@@ -501,29 +614,33 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 
-  Widget _googleButton() {
+  Widget _googleButton(bool dark) {
     return SizedBox(
       width: double.infinity,
       height: 56,
       child: OutlinedButton.icon(
         onPressed: () {},
-        icon: const Icon(
+        icon: Icon(
           Icons.g_mobiledata_rounded,
           size: 30,
-          color: Color(0xFFC28F41),
+          color: dark ? const Color(0xFF9DB7E8) : const Color(0xFFC28F41),
         ),
         label: Text(
           'Continue with Google',
           style: GoogleFonts.inter(
             fontSize: 14.5,
             fontWeight: FontWeight.w600,
-            color: const Color(0xFF7B5E35),
+            color: dark ? Colors.white : const Color(0xFF7B5E35),
           ),
         ),
         style: OutlinedButton.styleFrom(
-          backgroundColor: Colors.white.withOpacity(0.45),
+          backgroundColor: dark
+              ? Colors.white.withOpacity(0.04)
+              : Colors.white.withOpacity(0.45),
           side: BorderSide(
-            color: const Color(0xFFD6B36A).withOpacity(0.75),
+            color: dark
+                ? Colors.white.withOpacity(0.14)
+                : const Color(0xFFD6B36A).withOpacity(0.75),
             width: 1.2,
           ),
           shape: RoundedRectangleBorder(
@@ -534,16 +651,13 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 
-  Widget _signupRedirect() {
+  Widget _signupRedirect(Color subtleText) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text(
           "Don't have an account? ",
-          style: GoogleFonts.inter(
-            color: const Color(0xFF6F5A40),
-            fontSize: 13.5,
-          ),
+          style: GoogleFonts.inter(color: subtleText, fontSize: 13.5),
         ),
         GestureDetector(
           onTap: () {
@@ -565,7 +679,7 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 
-  Widget _buildBackgroundGlowTopRight() {
+  Widget _buildBackgroundGlowTopRight(bool dark) {
     return Positioned(
       top: -90,
       right: -60,
@@ -574,10 +688,14 @@ class _SignInScreenState extends State<SignInScreen> {
         height: 260,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: const Color(0xFFFFE9BF).withOpacity(0.55),
+          color: dark
+              ? const Color(0xFF1D4ED8).withOpacity(0.18)
+              : const Color(0xFFFFE9BF).withOpacity(0.55),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFFFE9BF).withOpacity(0.45),
+              color: dark
+                  ? const Color(0xFF1D4ED8).withOpacity(0.16)
+                  : const Color(0xFFFFE9BF).withOpacity(0.45),
               blurRadius: 100,
               spreadRadius: 18,
             ),
@@ -587,7 +705,7 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 
-  Widget _buildBackgroundGlowBottomLeft() {
+  Widget _buildBackgroundGlowBottomLeft(bool dark) {
     return Positioned(
       bottom: -120,
       left: -100,
@@ -596,10 +714,14 @@ class _SignInScreenState extends State<SignInScreen> {
         height: 210,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(140),
-          color: const Color(0xFFFFE7BA).withOpacity(0.28),
+          color: dark
+              ? const Color(0xFF60A5FA).withOpacity(0.10)
+              : const Color(0xFFFFE7BA).withOpacity(0.28),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFFFE7BA).withOpacity(0.24),
+              color: dark
+                  ? const Color(0xFF60A5FA).withOpacity(0.08)
+                  : const Color(0xFFFFE7BA).withOpacity(0.24),
               blurRadius: 100,
               spreadRadius: 10,
             ),

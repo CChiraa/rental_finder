@@ -29,10 +29,13 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     });
 
     final bool nowFavorite = FavoriteManager.isFavorite(widget.property);
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        backgroundColor: const Color(0xFF2B2118),
+        backgroundColor: dark
+            ? const Color(0xFF1E1E1E)
+            : const Color(0xFF2B2118),
         content: Text(
           nowFavorite ? 'Added to favorites ❤️' : 'Removed from favorites',
           style: GoogleFonts.inter(color: Colors.white),
@@ -53,14 +56,16 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
   }
 
   Future<void> _openBookingSheet() async {
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
+
     final result = await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFFF8F1E7),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        decoration: BoxDecoration(
+          color: dark ? const Color(0xFF121212) : const Color(0xFFF8F1E7),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         ),
         child: BookingSheet(property: widget.property),
       ),
@@ -87,8 +92,15 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
+    final Color primaryText = Theme.of(context).colorScheme.onSurface;
+    final Color secondaryText = dark ? Colors.white70 : const Color(0xFF6F5A40);
+    final Color sheetBg = dark
+        ? const Color(0xFF121212)
+        : const Color(0xFFF8F1E7);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F1E7),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
           SizedBox(
@@ -97,7 +109,22 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                Image.asset(widget.property['image'], fit: BoxFit.cover),
+                Image.asset(
+                  widget.property['image'],
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      color: dark
+                          ? const Color(0xFF2A2A2A)
+                          : const Color(0xFFF3E8D7),
+                      child: const Icon(
+                        Icons.image_not_supported_outlined,
+                        size: 48,
+                        color: Color(0xFFB17B30),
+                      ),
+                    );
+                  },
+                ),
                 Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
@@ -121,16 +148,20 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   _topIconButton(
+                    context: context,
+                    dark: dark,
                     icon: Icons.arrow_back_ios_new_rounded,
                     onTap: () => Navigator.pop(context),
                   ),
                   _topIconButton(
+                    context: context,
+                    dark: dark,
                     icon: isFavorite
                         ? Icons.favorite_rounded
                         : Icons.favorite_border_rounded,
                     iconColor: isFavorite
                         ? Colors.redAccent
-                        : const Color(0xFF2B2118),
+                        : (dark ? Colors.white : const Color(0xFF2B2118)),
                     onTap: _toggleFavorite,
                   ),
                 ],
@@ -143,9 +174,11 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
             maxChildSize: 0.92,
             builder: (_, controller) {
               return Container(
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF8F1E7),
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(34)),
+                decoration: BoxDecoration(
+                  color: sheetBg,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(34),
+                  ),
                 ),
                 child: SingleChildScrollView(
                   controller: controller,
@@ -158,13 +191,14 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           width: 44,
                           height: 5,
                           decoration: BoxDecoration(
-                            color: Colors.brown.withOpacity(0.20),
+                            color: dark
+                                ? Colors.white24
+                                : Colors.brown.withOpacity(0.20),
                             borderRadius: BorderRadius.circular(20),
                           ),
                         ),
                       ),
                       const SizedBox(height: 18),
-
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -174,7 +208,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                               style: GoogleFonts.cormorantGaramond(
                                 fontSize: 34,
                                 fontWeight: FontWeight.w700,
-                                color: const Color(0xFF2B2118),
+                                color: primaryText,
                                 height: 1,
                               ),
                             ),
@@ -211,9 +245,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           ),
                         ],
                       ),
-
                       const SizedBox(height: 14),
-
                       Row(
                         children: [
                           const Icon(
@@ -228,49 +260,47 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                               style: GoogleFonts.inter(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
-                                color: const Color(0xFF6F5A40),
+                                color: secondaryText,
                               ),
                             ),
                           ),
                         ],
                       ),
-
                       const SizedBox(height: 14),
-
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
                         children: [
                           if (widget.property['type'] != null)
-                            _infoTag(widget.property['type']),
+                            _infoTag(context, widget.property['type']),
                           if (widget.property['stayCategory'] != null)
-                            _infoTag(widget.property['stayCategory']),
+                            _infoTag(context, widget.property['stayCategory']),
                           if (widget.property['postedBy'] != null)
-                            _infoTag(widget.property['postedBy']),
+                            _infoTag(context, widget.property['postedBy']),
                         ],
                       ),
-
                       const SizedBox(height: 24),
-
-                      _sectionTitle('Description'),
+                      _sectionTitle(context, 'Description'),
                       const SizedBox(height: 10),
                       _softCard(
+                        context: context,
                         child: Text(
                           widget.property['description'] ??
                               'No description provided.',
                           style: GoogleFonts.inter(
                             fontSize: 14,
                             height: 1.65,
-                            color: const Color(0xFF5E4B36),
+                            color: dark
+                                ? Colors.white70
+                                : const Color(0xFF5E4B36),
                           ),
                         ),
                       ),
-
                       const SizedBox(height: 22),
-
-                      _sectionTitle('Location'),
+                      _sectionTitle(context, 'Location'),
                       const SizedBox(height: 10),
                       _softCard(
+                        context: context,
                         padding: const EdgeInsets.all(10),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(20),
@@ -300,9 +330,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           ),
                         ),
                       ),
-
                       const SizedBox(height: 28),
-
                       Row(
                         children: [
                           Expanded(
@@ -320,17 +348,23 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                                 isFavorite ? 'Saved' : 'Save',
                                 style: GoogleFonts.inter(
                                   fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF7B5E35),
+                                  color: dark
+                                      ? Colors.white
+                                      : const Color(0xFF7B5E35),
                                 ),
                               ),
                               style: OutlinedButton.styleFrom(
                                 side: BorderSide(
-                                  color: const Color(
-                                    0xFFD6B36A,
-                                  ).withOpacity(0.75),
+                                  color: dark
+                                      ? Colors.white.withOpacity(0.12)
+                                      : const Color(
+                                          0xFFD6B36A,
+                                        ).withOpacity(0.75),
                                   width: 1.2,
                                 ),
-                                backgroundColor: Colors.white.withOpacity(0.6),
+                                backgroundColor: dark
+                                    ? Colors.white.withOpacity(0.04)
+                                    : Colors.white.withOpacity(0.6),
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 15,
                                 ),
@@ -352,17 +386,23 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                                 'Chat',
                                 style: GoogleFonts.inter(
                                   fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF7B5E35),
+                                  color: dark
+                                      ? Colors.white
+                                      : const Color(0xFF7B5E35),
                                 ),
                               ),
                               style: OutlinedButton.styleFrom(
                                 side: BorderSide(
-                                  color: const Color(
-                                    0xFFD6B36A,
-                                  ).withOpacity(0.75),
+                                  color: dark
+                                      ? Colors.white.withOpacity(0.12)
+                                      : const Color(
+                                          0xFFD6B36A,
+                                        ).withOpacity(0.75),
                                   width: 1.2,
                                 ),
-                                backgroundColor: Colors.white.withOpacity(0.6),
+                                backgroundColor: dark
+                                    ? Colors.white.withOpacity(0.04)
+                                    : Colors.white.withOpacity(0.6),
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 15,
                                 ),
@@ -374,9 +414,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           ),
                         ],
                       ),
-
                       const SizedBox(height: 12),
-
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
@@ -399,7 +437,6 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           ),
                         ),
                       ),
-
                       const SizedBox(height: 12),
                     ],
                   ),
@@ -413,15 +450,23 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
   }
 
   Widget _topIconButton({
+    required BuildContext context,
+    required bool dark,
     required IconData icon,
     required VoidCallback onTap,
     Color iconColor = const Color(0xFF2B2118),
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.82),
+        color: dark
+            ? Colors.black.withOpacity(0.35)
+            : Colors.white.withOpacity(0.82),
         shape: BoxShape.circle,
-        border: Border.all(color: Colors.white.withOpacity(0.5)),
+        border: Border.all(
+          color: dark
+              ? Colors.white.withOpacity(0.12)
+              : Colors.white.withOpacity(0.5),
+        ),
       ),
       child: IconButton(
         onPressed: onTap,
@@ -430,31 +475,43 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     );
   }
 
-  Widget _sectionTitle(String title) {
+  Widget _sectionTitle(BuildContext context, String title) {
     return Text(
       title,
       style: GoogleFonts.inter(
         fontSize: 18,
         fontWeight: FontWeight.w700,
-        color: const Color(0xFF2B2118),
+        color: Theme.of(context).colorScheme.onSurface,
       ),
     );
   }
 
   Widget _softCard({
+    required BuildContext context,
     required Widget child,
     EdgeInsetsGeometry padding = const EdgeInsets.all(16),
   }) {
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       width: double.infinity,
       padding: padding,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.78),
+        color: dark
+            ? Colors.white.withOpacity(0.05)
+            : Colors.white.withOpacity(0.78),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.65), width: 1),
+        border: Border.all(
+          color: dark
+              ? Colors.white.withOpacity(0.08)
+              : Colors.white.withOpacity(0.65),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFC89243).withOpacity(0.08),
+            color: dark
+                ? Colors.black.withOpacity(0.14)
+                : const Color(0xFFC89243).withOpacity(0.08),
             blurRadius: 18,
             offset: const Offset(0, 10),
           ),
@@ -464,11 +521,13 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     );
   }
 
-  Widget _infoTag(String text) {
+  Widget _infoTag(BuildContext context, String text) {
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3E8D7),
+        color: dark ? const Color(0xFF2A2A2A) : const Color(0xFFF3E8D7),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
@@ -476,7 +535,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
         style: GoogleFonts.inter(
           fontSize: 11.5,
           fontWeight: FontWeight.w600,
-          color: const Color(0xFF8E6A39),
+          color: dark ? const Color(0xFF9DB7E8) : const Color(0xFF8E6A39),
         ),
       ),
     );

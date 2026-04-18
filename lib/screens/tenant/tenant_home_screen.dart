@@ -172,36 +172,65 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
+    final Gradient backgroundGradient = dark
+        ? const LinearGradient(
+            colors: [Color(0xFF0F172A), Color(0xFF162033), Color(0xFF1E293B)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          )
+        : const LinearGradient(
+            colors: [Color(0xFFF8F1E7), Color(0xFFF2E6D5), Color(0xFFEAD8BE)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          );
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F1E7),
-      body: SafeArea(
-        child: IndexedStack(
-          index: _currentIndex,
-          children: [
-            _buildHomeTab(),
-            TenantFeedTab(
-              properties: properties,
-              favoriteIds: favoriteIds,
-              onToggleFavorite: toggleFavorite,
-            ),
-            TenantMapTab(properties: properties),
-            const TenantChatTab(),
-            TenantProfileScreen(
-              userName: widget.userName,
-              userEmail: '${widget.userName}@gmail.com',
-              savedProperties: favoriteProperties,
-              bookingHistory: bookingHistory,
-              payments: payments,
-            ),
-          ],
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      body: Container(
+        decoration: BoxDecoration(gradient: backgroundGradient),
+        child: SafeArea(
+          child: IndexedStack(
+            index: _currentIndex,
+            children: [
+              _buildHomeTab(context),
+              TenantFeedTab(
+                properties: properties,
+                favoriteIds: favoriteIds,
+                onToggleFavorite: toggleFavorite,
+              ),
+              TenantMapTab(properties: properties),
+              const TenantChatTab(),
+              TenantProfileScreen(
+                userName: widget.userName,
+                userEmail: '${widget.userName}@gmail.com',
+                savedProperties: favoriteProperties,
+                bookingHistory: bookingHistory,
+                payments: payments,
+              ),
+            ],
+          ),
         ),
       ),
-      bottomNavigationBar: _buildBottomNav(),
+      bottomNavigationBar: _buildBottomNav(context, dark),
     );
   }
 
-  Widget _buildHomeTab() {
+  Widget _buildHomeTab(BuildContext context) {
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
     final shownProperties = filteredProperties;
+
+    final Color primaryText = dark ? Colors.white : const Color(0xFF2C2621);
+    final Color secondaryText = dark ? Colors.white70 : const Color(0xFF7B664C);
+    final Color mutedText = dark ? Colors.white60 : const Color(0xFF8B7355);
+
+    final Color glassCard = dark
+        ? const Color(0xFF1E293B).withOpacity(0.88)
+        : Colors.white.withOpacity(0.88);
+
+    final Color softCard = dark
+        ? const Color(0xFF243247).withOpacity(0.9)
+        : const Color(0xFFF8F1E7).withOpacity(0.95);
 
     return Column(
       children: [
@@ -209,11 +238,11 @@ class _HomeScreenState extends State<HomeScreen> {
           clipBehavior: Clip.none,
           children: [
             Container(
-              height: 260,
+              height: 270,
               decoration: const BoxDecoration(
                 borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(30),
-                  bottomRight: Radius.circular(30),
+                  bottomLeft: Radius.circular(34),
+                  bottomRight: Radius.circular(34),
                 ),
                 image: DecorationImage(
                   image: AssetImage('images/KL.jpg'),
@@ -222,64 +251,106 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             Container(
-              height: 260,
+              height: 270,
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.4),
                 borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(30),
-                  bottomRight: Radius.circular(30),
+                  bottomLeft: Radius.circular(34),
+                  bottomRight: Radius.circular(34),
+                ),
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: dark
+                      ? [
+                          Colors.black.withOpacity(0.28),
+                          const Color(0xFF0F172A).withOpacity(0.72),
+                        ]
+                      : [
+                          Colors.black.withOpacity(0.18),
+                          Colors.black.withOpacity(0.40),
+                        ],
                 ),
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
+              padding: const EdgeInsets.fromLTRB(20, 56, 20, 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.location_on, color: Colors.white, size: 18),
-                      SizedBox(width: 5),
-                      Text(
-                        'Kuala Lumpur',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ],
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.14),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white.withOpacity(0.14)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.location_on, color: Colors.white, size: 16),
+                        SizedBox(width: 5),
+                        Text(
+                          'Kuala Lumpur',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 18),
                   Text(
                     'Hey, ${widget.userName}!',
                     style: GoogleFonts.cormorantGaramond(
-                      fontSize: 28,
+                      fontSize: 31,
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
                       height: 1,
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  const Text(
+                  const SizedBox(height: 8),
+                  Text(
                     'Tell us where you want to go',
-                    style: TextStyle(
-                      color: Colors.white,
+                    style: GoogleFonts.inter(
+                      color: Colors.white.withOpacity(0.95),
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 20),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 15),
-                    height: 52,
+                    height: 54,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.92),
+                      color: dark
+                          ? Colors.white.withOpacity(0.10)
+                          : Colors.white.withOpacity(0.94),
                       borderRadius: BorderRadius.circular(30),
+                      border: Border.all(
+                        color: dark
+                            ? Colors.white.withOpacity(0.08)
+                            : Colors.transparent,
+                      ),
                     ),
                     child: TextField(
                       controller: searchController,
                       onChanged: (_) => setState(() {}),
-                      decoration: const InputDecoration(
-                        icon: Icon(Icons.search, color: Colors.black54),
-                        hintText: 'Search...',
-                        hintStyle: TextStyle(color: Colors.grey),
+                      style: TextStyle(
+                        color: dark ? Colors.white : Colors.black87,
+                      ),
+                      decoration: InputDecoration(
+                        icon: Icon(
+                          Icons.search,
+                          color: dark ? Colors.white70 : Colors.black54,
+                        ),
+                        hintText: 'Search location, property type...',
+                        hintStyle: TextStyle(
+                          color: dark ? Colors.white54 : Colors.grey,
+                        ),
                         border: InputBorder.none,
                       ),
                     ),
@@ -289,7 +360,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-        const SizedBox(height: 15),
+        const SizedBox(height: 16),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -317,11 +388,30 @@ class _HomeScreenState extends State<HomeScreen> {
                           vertical: 10,
                         ),
                         decoration: BoxDecoration(
-                          color: isSelected ? Colors.black : Colors.white,
+                          color: isSelected
+                              ? const Color(0xFFB8964F)
+                              : (dark
+                                    ? const Color(0xFF1E293B).withOpacity(0.88)
+                                    : Colors.white.withOpacity(0.90)),
                           borderRadius: BorderRadius.circular(22),
                           border: Border.all(
-                            color: Colors.black.withOpacity(0.8),
+                            color: isSelected
+                                ? const Color(0xFFD6B36A)
+                                : (dark
+                                      ? Colors.white.withOpacity(0.08)
+                                      : Colors.white.withOpacity(0.55)),
                           ),
+                          boxShadow: isSelected
+                              ? [
+                                  BoxShadow(
+                                    color: const Color(
+                                      0xFFD6B36A,
+                                    ).withOpacity(0.18),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ]
+                              : [],
                         ),
                         child: Center(
                           child: Text(
@@ -329,7 +419,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             style: GoogleFonts.inter(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
-                              color: isSelected ? Colors.white : Colors.black87,
+                              color: isSelected
+                                  ? Colors.white
+                                  : (dark ? Colors.white70 : Colors.black87),
                             ),
                           ),
                         ),
@@ -338,7 +430,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   },
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
               Row(
                 children: [
                   Expanded(
@@ -347,7 +439,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: GoogleFonts.inter(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
-                        color: const Color(0xFF2B2118),
+                        color: primaryText,
                       ),
                     ),
                   ),
@@ -355,24 +447,28 @@ class _HomeScreenState extends State<HomeScreen> {
                     onTap: () {
                       showModalBottomSheet(
                         context: context,
-                        backgroundColor: const Color(0xFFF8F1E7),
-                        shape: const RoundedRectangleBorder(
-                          borderRadius: BorderRadius.vertical(
-                            top: Radius.circular(26),
-                          ),
-                        ),
-                        builder: (context) => _buildFavoriteSheet(),
+                        backgroundColor: Colors.transparent,
+                        isScrollControlled: true,
+                        builder: (context) => _buildFavoriteSheet(context),
                       ).then((_) => setState(() {}));
                     },
                     child: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: glassCard,
                         borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: dark
+                              ? Colors.white.withOpacity(0.08)
+                              : Colors.white.withOpacity(0.35),
+                        ),
                         boxShadow: [
                           BoxShadow(
-                            blurRadius: 10,
-                            color: Colors.black.withOpacity(0.06),
+                            blurRadius: 14,
+                            offset: const Offset(0, 6),
+                            color: dark
+                                ? Colors.black.withOpacity(0.20)
+                                : const Color(0xFFD6B36A).withOpacity(0.14),
                           ),
                         ],
                       ),
@@ -380,7 +476,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         favoriteProperties.isNotEmpty
                             ? Icons.favorite
                             : Icons.favorite_border_rounded,
-                        color: const Color(0xFFB17B30),
+                        color: favoriteProperties.isNotEmpty
+                            ? Colors.redAccent
+                            : const Color(0xFFB8964F),
                       ),
                     ),
                   ),
@@ -391,26 +489,28 @@ class _HomeScreenState extends State<HomeScreen> {
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.85),
+                    color: glassCard,
                     borderRadius: BorderRadius.circular(22),
                   ),
                   child: Text(
                     'No properties found.',
                     style: GoogleFonts.inter(
-                      color: const Color(0xFF6B5338),
+                      color: secondaryText,
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
-              ...shownProperties.map((property) => _propertyCard(property)),
-              const SizedBox(height: 20),
+              ...shownProperties.map(
+                (property) => _propertyCard(context, property),
+              ),
+              const SizedBox(height: 8),
               Text(
                 'Discover new places',
                 style: GoogleFonts.inter(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: const Color(0xFF2B2118),
+                  color: primaryText,
                 ),
               ),
               const SizedBox(height: 15),
@@ -422,11 +522,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   separatorBuilder: (_, __) => const SizedBox(width: 14),
                   itemBuilder: (context, index) {
                     final property = shownProperties[index];
-                    return _discoverCard(property);
+                    return _discoverCard(context, property);
                   },
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
             ],
           ),
         ),
@@ -434,15 +534,24 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildBottomNav() {
+  Widget _buildBottomNav(BuildContext context, bool dark) {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.96),
-        borderRadius: BorderRadius.circular(22),
+        color: dark
+            ? const Color(0xFF0F172A).withOpacity(0.96)
+            : Colors.white.withOpacity(0.96),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: dark
+              ? Colors.white.withOpacity(0.06)
+              : Colors.white.withOpacity(0.5),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: dark
+                ? Colors.black.withOpacity(0.22)
+                : Colors.black.withOpacity(0.06),
             blurRadius: 18,
             offset: const Offset(0, 8),
           ),
@@ -453,8 +562,8 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: const Color(0xFFB17B30),
-        unselectedItemColor: const Color(0xFF9A8B78),
+        selectedItemColor: const Color(0xFFB8964F),
+        unselectedItemColor: dark ? Colors.white54 : const Color(0xFF9A8B78),
         selectedLabelStyle: GoogleFonts.inter(
           fontSize: 11,
           fontWeight: FontWeight.w600,
@@ -491,8 +600,16 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _propertyCard(Map<String, dynamic> property) {
+  Widget _propertyCard(BuildContext context, Map<String, dynamic> property) {
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
     final bool favorite = isFavorite(property);
+
+    final Color cardBg = dark
+        ? const Color(0xFF1E293B).withOpacity(0.88)
+        : Colors.white.withOpacity(0.93);
+
+    final Color primaryText = dark ? Colors.white : const Color(0xFF2C2621);
+    final Color secondaryText = dark ? Colors.white70 : const Color(0xFF7B664C);
 
     return GestureDetector(
       onTap: () {
@@ -504,12 +621,23 @@ class _HomeScreenState extends State<HomeScreen> {
         ).then((_) => setState(() {}));
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 15),
+        margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          color: Colors.white,
+          borderRadius: BorderRadius.circular(22),
+          color: cardBg,
+          border: Border.all(
+            color: dark
+                ? const Color(0xFFD6B36A).withOpacity(0.08)
+                : Colors.white.withOpacity(0.45),
+          ),
           boxShadow: [
-            BoxShadow(blurRadius: 10, color: Colors.grey.withOpacity(0.18)),
+            BoxShadow(
+              blurRadius: 16,
+              offset: const Offset(0, 8),
+              color: dark
+                  ? Colors.black.withOpacity(0.22)
+                  : const Color(0xFFD6B36A).withOpacity(0.12),
+            ),
           ],
         ),
         child: Column(
@@ -518,18 +646,32 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(20),
+                    top: Radius.circular(22),
                   ),
                   child: Image.asset(
                     property['image'],
-                    height: 150,
+                    height: 160,
                     width: double.infinity,
                     fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        height: 160,
+                        width: double.infinity,
+                        color: dark
+                            ? const Color(0xFF243247)
+                            : const Color(0xFFF3E8D7),
+                        child: const Icon(
+                          Icons.image_not_supported_outlined,
+                          size: 40,
+                          color: Color(0xFFB8964F),
+                        ),
+                      );
+                    },
                   ),
                 ),
                 Positioned(
-                  top: 10,
-                  right: 10,
+                  top: 12,
+                  right: 12,
                   child: GestureDetector(
                     onTap: () {
                       toggleFavorite(property['id']);
@@ -537,7 +679,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.95),
+                        color: dark
+                            ? const Color(0xFF0F172A).withOpacity(0.92)
+                            : Colors.white.withOpacity(0.95),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -546,7 +690,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             : Icons.favorite_border_rounded,
                         color: favorite
                             ? Colors.redAccent
-                            : const Color(0xFFB17B30),
+                            : const Color(0xFFB8964F),
                         size: 20,
                       ),
                     ),
@@ -555,7 +699,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
             Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(14),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -568,7 +712,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           style: GoogleFonts.inter(
                             fontWeight: FontWeight.w700,
                             fontSize: 15.5,
-                            color: const Color(0xFF2B2118),
+                            color: primaryText,
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -577,7 +721,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             const Icon(
                               Icons.location_on_rounded,
                               size: 16,
-                              color: Color(0xFFB17B30),
+                              color: Color(0xFFB8964F),
                             ),
                             const SizedBox(width: 4),
                             Expanded(
@@ -585,18 +729,19 @@ class _HomeScreenState extends State<HomeScreen> {
                                 property['location'],
                                 style: GoogleFonts.inter(
                                   fontSize: 13,
-                                  color: const Color(0xFF6F5A40),
+                                  color: secondaryText,
                                 ),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 9),
                         Wrap(
                           spacing: 8,
+                          runSpacing: 8,
                           children: [
-                            _smallTag(property['type']),
-                            _smallTag(property['stayCategory']),
+                            _smallTag(context, property['type']),
+                            _smallTag(context, property['stayCategory']),
                           ],
                         ),
                       ],
@@ -608,7 +753,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: GoogleFonts.inter(
                       fontWeight: FontWeight.w700,
                       fontSize: 14,
-                      color: const Color(0xFFB17B30),
+                      color: const Color(0xFFB8964F),
                     ),
                   ),
                 ],
@@ -620,7 +765,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _discoverCard(Map<String, dynamic> property) {
+  Widget _discoverCard(BuildContext context, Map<String, dynamic> property) {
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
     final bool favorite = isFavorite(property);
 
     return GestureDetector(
@@ -643,6 +789,20 @@ class _HomeScreenState extends State<HomeScreen> {
                 width: 160,
                 height: 185,
                 fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    width: 160,
+                    height: 185,
+                    color: dark
+                        ? const Color(0xFF243247)
+                        : const Color(0xFFF3E8D7),
+                    child: const Icon(
+                      Icons.image_not_supported_outlined,
+                      size: 40,
+                      color: Color(0xFFB8964F),
+                    ),
+                  );
+                },
               ),
             ),
             Container(
@@ -655,7 +815,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   end: Alignment.bottomCenter,
                   colors: [
                     Colors.black.withOpacity(0.05),
-                    Colors.black.withOpacity(0.50),
+                    Colors.black.withOpacity(0.56),
                   ],
                 ),
               ),
@@ -670,14 +830,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.95),
+                    color: dark
+                        ? const Color(0xFF0F172A).withOpacity(0.92)
+                        : Colors.white.withOpacity(0.95),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
                     favorite ? Icons.favorite : Icons.favorite_border_rounded,
                     color: favorite
                         ? Colors.redAccent
-                        : const Color(0xFFB17B30),
+                        : const Color(0xFFB8964F),
                     size: 18,
                   ),
                 ),
@@ -719,106 +881,140 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildFavoriteSheet() {
+  Widget _buildFavoriteSheet(BuildContext context) {
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
     final favorites = favoriteProperties;
+    final Color primaryText = dark ? Colors.white : const Color(0xFF2C2621);
+    final Color secondaryText = dark ? Colors.white70 : const Color(0xFF7B664C);
 
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
-        child: Column(
-          children: [
-            Container(
-              width: 45,
-              height: 5,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade400,
-                borderRadius: BorderRadius.circular(20),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                const Icon(Icons.favorite, color: Colors.redAccent),
-                const SizedBox(width: 8),
-                Text(
-                  'My Favorites',
-                  style: GoogleFonts.inter(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF2B2118),
-                  ),
+    return Container(
+      decoration: BoxDecoration(
+        color: dark ? const Color(0xFF0F172A) : const Color(0xFFF8F1E7),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+          child: Column(
+            children: [
+              Container(
+                width: 45,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: dark ? Colors.white30 : Colors.grey.shade400,
+                  borderRadius: BorderRadius.circular(20),
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: favorites.isEmpty
-                  ? Center(
-                      child: Text(
-                        'No favorite places yet.',
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          color: const Color(0xFF6F5A40),
-                        ),
-                      ),
-                    )
-                  : ListView.separated(
-                      itemCount: favorites.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        final property = favorites[index];
-                        return Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.all(10),
-                            leading: ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: Image.asset(
-                                property['image'],
-                                width: 60,
-                                height: 60,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                            title: Text(
-                              property['title'],
-                              style: GoogleFonts.inter(
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            subtitle: Text(
-                              property['location'],
-                              style: GoogleFonts.inter(fontSize: 12.5),
-                            ),
-                            trailing: IconButton(
-                              onPressed: () {
-                                FavoriteManager.toggleFavorite(property);
-                                setState(() {});
-                              },
-                              icon: const Icon(
-                                Icons.favorite,
-                                color: Colors.redAccent,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  const Icon(Icons.favorite, color: Colors.redAccent),
+                  const SizedBox(width: 8),
+                  Text(
+                    'My Favorites',
+                    style: GoogleFonts.inter(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: primaryText,
                     ),
-            ),
-          ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: favorites.isEmpty
+                    ? Center(
+                        child: Text(
+                          'No favorite places yet.',
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            color: secondaryText,
+                          ),
+                        ),
+                      )
+                    : ListView.separated(
+                        itemCount: favorites.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          final property = favorites[index];
+                          return Container(
+                            decoration: BoxDecoration(
+                              color: dark
+                                  ? const Color(0xFF1E293B).withOpacity(0.9)
+                                  : Colors.white,
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.all(10),
+                              leading: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.asset(
+                                  property['image'],
+                                  width: 60,
+                                  height: 60,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      width: 60,
+                                      height: 60,
+                                      color: dark
+                                          ? const Color(0xFF243247)
+                                          : const Color(0xFFF3E8D7),
+                                      child: const Icon(
+                                        Icons.image_not_supported_outlined,
+                                        size: 24,
+                                        color: Color(0xFFB8964F),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                              title: Text(
+                                property['title'],
+                                style: GoogleFonts.inter(
+                                  fontWeight: FontWeight.w700,
+                                  color: primaryText,
+                                ),
+                              ),
+                              subtitle: Text(
+                                property['location'],
+                                style: GoogleFonts.inter(
+                                  fontSize: 12.5,
+                                  color: secondaryText,
+                                ),
+                              ),
+                              trailing: IconButton(
+                                onPressed: () {
+                                  FavoriteManager.toggleFavorite(property);
+                                  setState(() {});
+                                },
+                                icon: const Icon(
+                                  Icons.favorite,
+                                  color: Colors.redAccent,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _smallTag(String text) {
+  Widget _smallTag(BuildContext context, String text) {
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3E8D7),
+        color: dark
+            ? const Color(0xFFD6B36A).withOpacity(0.14)
+            : const Color(0xFFF3E8D7),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
@@ -826,7 +1022,7 @@ class _HomeScreenState extends State<HomeScreen> {
         style: GoogleFonts.inter(
           fontSize: 11.5,
           fontWeight: FontWeight.w600,
-          color: const Color(0xFF8E6A39),
+          color: dark ? const Color(0xFFEAD8BE) : const Color(0xFF8E6A39),
         ),
       ),
     );
