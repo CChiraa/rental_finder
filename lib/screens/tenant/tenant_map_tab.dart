@@ -177,6 +177,50 @@ class _TenantMapTabState extends State<TenantMapTab> {
     );
   }
 
+  void resetSelection() {
+    setState(() {
+      selectedPropertyId = null;
+    });
+
+    mapController?.animateCamera(
+      CameraUpdate.newCameraPosition(
+        const CameraPosition(target: klCenter, zoom: 11.5),
+      ),
+    );
+  }
+
+  void _openFullScreenMap() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => FullScreenMapPage(
+          markers: allMarkers,
+          initialTarget: selectedPropertyId != null
+              ? _selectedPropertyLatLng() ?? klCenter
+              : klCenter,
+        ),
+      ),
+    );
+  }
+
+  LatLng? _selectedPropertyLatLng() {
+    final selected = widget.properties.cast<Map<String, dynamic>?>().firstWhere(
+      (property) => property?['id'] == selectedPropertyId,
+      orElse: () => null,
+    );
+
+    if (selected == null ||
+        selected['lat'] == null ||
+        selected['lng'] == null) {
+      return null;
+    }
+
+    return LatLng(
+      (selected['lat'] as num).toDouble(),
+      (selected['lng'] as num).toDouble(),
+    );
+  }
+
   double calculateDistanceKm(
     double lat1,
     double lng1,
@@ -341,37 +385,97 @@ class _TenantMapTabState extends State<TenantMapTab> {
             ],
           ),
           const SizedBox(height: 14),
-          Container(
-            height: 280,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(28),
-              boxShadow: [
-                BoxShadow(
-                  color: dark
-                      ? Colors.black.withOpacity(0.18)
-                      : Colors.black.withOpacity(0.06),
-                  blurRadius: 16,
-                  offset: const Offset(0, 8),
+          Stack(
+            children: [
+              Container(
+                height: 280,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(28),
+                  boxShadow: [
+                    BoxShadow(
+                      color: dark
+                          ? Colors.black.withOpacity(0.18)
+                          : Colors.black.withOpacity(0.06),
+                      blurRadius: 16,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(28),
-              child: GoogleMap(
-                initialCameraPosition: const CameraPosition(
-                  target: klCenter,
-                  zoom: 11.5,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(28),
+                  child: GoogleMap(
+                    initialCameraPosition: const CameraPosition(
+                      target: klCenter,
+                      zoom: 11.5,
+                    ),
+                    myLocationButtonEnabled: false,
+                    zoomControlsEnabled: false,
+                    mapToolbarEnabled: false,
+                    markers: allMarkers,
+                    onMapCreated: (controller) {
+                      mapController = controller;
+                    },
+                  ),
                 ),
-                myLocationButtonEnabled: false,
-                zoomControlsEnabled: false,
-                mapToolbarEnabled: false,
-                markers: allMarkers,
-                onMapCreated: (controller) {
-                  mapController = controller;
-                },
               ),
-            ),
+              Positioned(
+                top: 12,
+                right: 12,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: _openFullScreenMap,
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: dark
+                            ? Colors.black.withOpacity(0.65)
+                            : Colors.white.withOpacity(0.95),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: dark
+                              ? Colors.white.withOpacity(0.10)
+                              : Colors.black.withOpacity(0.05),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.12),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.fullscreen_rounded,
+                            size: 18,
+                            color: Color(0xFFB17B30),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Full Screen',
+                            style: GoogleFonts.inter(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                              color: dark
+                                  ? Colors.white
+                                  : const Color(0xFF5E4B36),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 18),
           Expanded(
@@ -391,8 +495,8 @@ class _TenantMapTabState extends State<TenantMapTab> {
                     separatorBuilder: (_, __) => const SizedBox(height: 12),
                     itemBuilder: (context, index) {
                       final property = shownProperties[index];
-                      final bool isSelected =
-                          selectedPropertyId == property['id'];
+                      final int propertyId = property['id'] ?? 0;
+                      final bool isSelected = selectedPropertyId == propertyId;
 
                       Map<String, dynamic>? nearest;
                       if (property['lat'] != null && property['lng'] != null) {
@@ -403,7 +507,14 @@ class _TenantMapTabState extends State<TenantMapTab> {
                       }
 
                       return GestureDetector(
-                        onTap: () => moveToProperty(property),
+                        onTap: () {
+                          if (selectedPropertyId == propertyId) {
+                            resetSelection();
+                            return;
+                          }
+
+                          moveToProperty(property);
+                        },
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
                           padding: const EdgeInsets.all(14),
@@ -549,6 +660,100 @@ class _TenantMapTabState extends State<TenantMapTab> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class FullScreenMapPage extends StatefulWidget {
+  final Set<Marker> markers;
+  final LatLng initialTarget;
+
+  const FullScreenMapPage({
+    super.key,
+    required this.markers,
+    required this.initialTarget,
+  });
+
+  @override
+  State<FullScreenMapPage> createState() => _FullScreenMapPageState();
+}
+
+class _FullScreenMapPageState extends State<FullScreenMapPage> {
+  GoogleMapController? fullMapController;
+
+  @override
+  void dispose() {
+    fullMapController?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
+
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      body: Stack(
+        children: [
+          GoogleMap(
+            initialCameraPosition: CameraPosition(
+              target: widget.initialTarget,
+              zoom: 13.5,
+            ),
+            myLocationButtonEnabled: false,
+            zoomControlsEnabled: true,
+            mapToolbarEnabled: false,
+            markers: widget.markers,
+            onMapCreated: (controller) {
+              fullMapController = controller;
+            },
+          ),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      color: dark
+                          ? Colors.black.withOpacity(0.65)
+                          : Colors.white.withOpacity(0.95),
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        color: dark ? Colors.white : const Color(0xFF2B2118),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: dark
+                          ? Colors.black.withOpacity(0.65)
+                          : Colors.white.withOpacity(0.95),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      'Full Screen Map',
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w700,
+                        color: dark ? Colors.white : const Color(0xFF5E4B36),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

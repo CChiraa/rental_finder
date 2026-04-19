@@ -16,6 +16,8 @@ class PropertyDetailScreen extends StatefulWidget {
 }
 
 class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
+  bool isChatSelected = false;
+
   bool get isFavorite => FavoriteManager.isFavorite(widget.property);
 
   LatLng get location => LatLng(
@@ -51,6 +53,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
       context,
       MaterialPageRoute(builder: (_) => ChatDetailScreen(chat: chat)),
     ).then((_) {
+      if (!mounted) return;
       setState(() {});
     });
   }
@@ -334,108 +337,112 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: _toggleFavorite,
-                              icon: Icon(
-                                isFavorite
-                                    ? Icons.favorite_rounded
-                                    : Icons.favorite_border_rounded,
-                                color: isFavorite
-                                    ? Colors.redAccent
-                                    : const Color(0xFFB17B30),
-                              ),
-                              label: Text(
-                                isFavorite ? 'Saved' : 'Save',
-                                style: GoogleFonts.inter(
-                                  fontWeight: FontWeight.w700,
-                                  color: dark
-                                      ? Colors.white
-                                      : const Color(0xFF7B5E35),
-                                ),
-                              ),
-                              style: OutlinedButton.styleFrom(
-                                side: BorderSide(
-                                  color: dark
-                                      ? Colors.white.withOpacity(0.12)
-                                      : const Color(
-                                          0xFFD6B36A,
-                                        ).withOpacity(0.75),
-                                  width: 1.2,
-                                ),
-                                backgroundColor: dark
-                                    ? Colors.white.withOpacity(0.04)
-                                    : Colors.white.withOpacity(0.6),
+                            flex: 2,
+                            child: GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  isChatSelected = true;
+                                });
+                                _openChat();
+                              },
+                              child: Container(
                                 padding: const EdgeInsets.symmetric(
-                                  vertical: 15,
+                                  vertical: 16,
                                 ),
-                                shape: RoundedRectangleBorder(
+                                decoration: BoxDecoration(
+                                  color: isChatSelected
+                                      ? const Color(0xFFB17B30)
+                                      : (dark
+                                            ? Colors.white.withOpacity(0.04)
+                                            : Colors.white.withOpacity(0.6)),
                                   borderRadius: BorderRadius.circular(18),
+                                  border: Border.all(
+                                    color: isChatSelected
+                                        ? const Color(0xFFB17B30)
+                                        : (dark
+                                              ? Colors.white.withOpacity(0.12)
+                                              : const Color(
+                                                  0xFFD6B36A,
+                                                ).withOpacity(0.75)),
+                                    width: 1.2,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.chat_bubble_outline_rounded,
+                                      color: isChatSelected
+                                          ? Colors.white
+                                          : const Color(0xFFB17B30),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Chat',
+                                      style: GoogleFonts.inter(
+                                        fontWeight: FontWeight.w700,
+                                        color: isChatSelected
+                                            ? Colors.white
+                                            : (dark
+                                                  ? Colors.white
+                                                  : const Color(0xFF7B5E35)),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
                           ),
-                          const SizedBox(width: 10),
+                          const SizedBox(width: 12),
                           Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: _openChat,
-                              icon: const Icon(
-                                Icons.chat_bubble_outline_rounded,
-                                color: Color(0xFFB17B30),
-                              ),
-                              label: Text(
-                                'Chat',
-                                style: GoogleFonts.inter(
-                                  fontWeight: FontWeight.w700,
-                                  color: dark
-                                      ? Colors.white
-                                      : const Color(0xFF7B5E35),
-                                ),
-                              ),
-                              style: OutlinedButton.styleFrom(
-                                side: BorderSide(
-                                  color: dark
-                                      ? Colors.white.withOpacity(0.12)
-                                      : const Color(
-                                          0xFFD6B36A,
-                                        ).withOpacity(0.75),
-                                  width: 1.2,
-                                ),
-                                backgroundColor: dark
-                                    ? Colors.white.withOpacity(0.04)
-                                    : Colors.white.withOpacity(0.6),
+                            flex: 3,
+                            child: GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  isChatSelected = false;
+                                });
+                                _openBookingSheet();
+                              },
+                              child: Container(
                                 padding: const EdgeInsets.symmetric(
-                                  vertical: 15,
+                                  vertical: 16,
                                 ),
-                                shape: RoundedRectangleBorder(
+                                decoration: BoxDecoration(
+                                  color: !isChatSelected
+                                      ? const Color(0xFFB17B30)
+                                      : (dark
+                                            ? Colors.white.withOpacity(0.04)
+                                            : Colors.white.withOpacity(0.6)),
                                   borderRadius: BorderRadius.circular(18),
+                                  border: Border.all(
+                                    color: !isChatSelected
+                                        ? const Color(0xFFB17B30)
+                                        : (dark
+                                              ? Colors.white.withOpacity(0.12)
+                                              : const Color(
+                                                  0xFFD6B36A,
+                                                ).withOpacity(0.75)),
+                                    width: 1.2,
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    'Book Now',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                      color: !isChatSelected
+                                          ? Colors.white
+                                          : (dark
+                                                ? Colors.white
+                                                : const Color(0xFF7B5E35)),
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
                           ),
                         ],
-                      ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _openBookingSheet,
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            backgroundColor: const Color(0xFFB17B30),
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                          ),
-                          child: Text(
-                            'Book Now',
-                            style: GoogleFonts.inter(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
                       ),
                       const SizedBox(height: 12),
                     ],
