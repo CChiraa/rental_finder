@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:smart_rental_app/screens/signin.dart';
 import 'package:smart_rental_app/screens/tenant/tenant_home_screen.dart';
+import 'package:smart_rental_app/screens/landlord/landlord_home_screen.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -72,7 +73,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     final Color textPrimary = colorScheme.onSurface;
     final Color textSecondary = dark ? Colors.white70 : const Color(0xFF8B7355);
-
     final Color subtleText = dark ? Colors.white60 : const Color(0xFF6F5A40);
 
     return Scaffold(
@@ -580,13 +580,24 @@ class _SignUpScreenState extends State<SignUpScreen> {
         child: ElevatedButton(
           onPressed: () {
             if (_formSignupKey.currentState!.validate() && agreePersonalData) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      HomeScreen(userName: nameController.text.trim()),
-                ),
-              );
+              final String userName = nameController.text.trim();
+
+              if (selectedRole == 'Tenant') {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => HomeScreen(userName: userName),
+                  ),
+                );
+              } else {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        LandlordHomeScreen(userName: userName),
+                  ),
+                );
+              }
             } else if (!agreePersonalData) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(

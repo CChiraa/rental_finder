@@ -8,7 +8,7 @@ const lightColorScheme = ColorScheme(
   onSecondary: Colors.black,
   error: Colors.red,
   onError: Colors.white,
-  surface: Color(0xFFF8F1E7), // profile screen beige
+  surface: Color(0xFFF8F1E7), // warm beige surface
   onSurface: Color(0xFF2C2621),
 );
 
@@ -16,11 +16,11 @@ const darkColorScheme = ColorScheme(
   brightness: Brightness.dark,
   primary: Color(0xFFD6B36A), // gold accent
   onPrimary: Colors.black,
-  secondary: Color(0xFFEAD8BE), // soft beige
-  onSecondary: Colors.black,
+  secondary: Color(0xFF2A241E), // deep warm secondary
+  onSecondary: Colors.white,
   error: Colors.redAccent,
   onError: Colors.white,
-  surface: Color(0xFF1A1816), // warm dark
+  surface: Color(0xFF1E1E1E), // dark grey surface
   onSurface: Colors.white,
 );
 
@@ -124,11 +124,11 @@ ThemeData darkMode = ThemeData(
   useMaterial3: true,
   brightness: Brightness.dark,
   colorScheme: darkColorScheme,
-  scaffoldBackgroundColor: const Color(0xFF141210),
-  cardColor: const Color(0xFF1F1B18),
+  scaffoldBackgroundColor: const Color(0xFF121212), // main background
+  cardColor: const Color(0xFF1E1E1E), // cards
 
   appBarTheme: const AppBarTheme(
-    backgroundColor: Color(0xFF141210),
+    backgroundColor: Color(0xFF121212),
     foregroundColor: Colors.white,
     elevation: 0,
     centerTitle: true,
@@ -152,7 +152,7 @@ ThemeData darkMode = ThemeData(
 
   inputDecorationTheme: InputDecorationTheme(
     filled: true,
-    fillColor: const Color(0xFF1F1B18),
+    fillColor: const Color(0xFF1E1E1E),
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
@@ -185,7 +185,7 @@ ThemeData darkMode = ThemeData(
   ),
 
   bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-    backgroundColor: Color(0xFF1F1B18),
+    backgroundColor: Color(0xFF1A1A1A),
     selectedItemColor: Color(0xFFD6B36A),
     unselectedItemColor: Colors.grey,
     type: BottomNavigationBarType.fixed,
@@ -197,7 +197,7 @@ ThemeData darkMode = ThemeData(
   ),
 
   cardTheme: CardThemeData(
-    color: const Color(0xFF1F1B18),
+    color: const Color(0xFF1E1E1E),
     elevation: 2,
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
   ),
