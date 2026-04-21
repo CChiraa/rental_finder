@@ -1,0 +1,269 @@
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:smart_rental_app/screens/landlord/bc_chat_detail_screen.dart';
+import 'package:smart_rental_app/screens/landlord/bc_chat_manager.dart';
+
+class BcChatScreen extends StatefulWidget {
+  final bool dark;
+  final Color glassCard;
+  final Color glassBorder;
+
+  const BcChatScreen({
+    super.key,
+    required this.dark,
+    required this.glassCard,
+    required this.glassBorder,
+  });
+
+  @override
+  State<BcChatScreen> createState() => _BcChatScreenState();
+}
+
+class _BcChatScreenState extends State<BcChatScreen> {
+  @override
+  void initState() {
+    super.initState();
+
+    if (LandlordChatManager.chats.isEmpty) {
+      LandlordChatManager.getOrCreateChat(
+        property: {
+          'id': 1,
+          'title': 'Condo near KLCC',
+          'image': 'images/condo1.jpg',
+        },
+        tenantName: 'Aina',
+      );
+
+      LandlordChatManager.getOrCreateChat(
+        property: {
+          'id': 2,
+          'title': 'Studio Apartment',
+          'image': 'images/studio1.jpg',
+        },
+        tenantName: 'Daniel',
+      );
+
+      LandlordChatManager.receiveTenantMessage(
+        LandlordChatManager.chats[1],
+        'Hi, is parking available for this unit?',
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final chats = LandlordChatManager.chats;
+    final Color primaryText = Theme.of(context).colorScheme.onSurface;
+    final Color secondaryText = widget.dark
+        ? Colors.white70
+        : const Color(0xFF7B6243);
+
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        foregroundColor: primaryText,
+        title: Text(
+          "Tenant Chats",
+          style: GoogleFonts.inter(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: primaryText,
+          ),
+        ),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.fromLTRB(22, 8, 22, 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Reply to tenant messages and manage property conversations here.",
+              style: GoogleFonts.inter(
+                fontSize: 13.2,
+                fontWeight: FontWeight.w500,
+                color: secondaryText,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Expanded(
+              child: chats.isEmpty
+                  ? _buildEmptyState(context)
+                  : ListView.builder(
+                      itemCount: chats.length,
+                      itemBuilder: (context, index) {
+                        final chat = chats[index];
+                        final messages = List<Map<String, dynamic>>.from(
+                          chat['messages'] ?? [],
+                        );
+                        final lastMessage =
+                            chat['lastMessage'] ??
+                            (messages.isNotEmpty ? messages.last['text'] : '');
+                        final lastTime = chat['lastTime'] ?? '';
+
+                        return GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    LandlordChatDetailScreen(chat: chat),
+                              ),
+                            ).then((_) {
+                              if (!mounted) return;
+                              setState(() {});
+                            });
+                          },
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 14),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: widget.glassCard,
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(color: widget.glassBorder),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: widget.dark
+                                      ? Colors.black.withOpacity(0.18)
+                                      : Colors.black.withOpacity(0.05),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 5),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 28,
+                                  backgroundColor: const Color(
+                                    0xFFC9A24A,
+                                  ).withOpacity(0.16),
+                                  child: Text(
+                                    (chat['tenantName'] ?? 'T')
+                                        .toString()[0]
+                                        .toUpperCase(),
+                                    style: GoogleFonts.inter(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800,
+                                      color: const Color(0xFFC9A24A),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        chat['tenantName'] ?? 'Tenant',
+                                        style: GoogleFonts.inter(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 14.8,
+                                          color: widget.dark
+                                              ? Colors.white
+                                              : const Color(0xFF1D1D1F),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        chat['propertyTitle'] ?? 'Property',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 12.4,
+                                          fontWeight: FontWeight.w600,
+                                          color: const Color(0xFFC9A24A),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        lastMessage.toString().isEmpty
+                                            ? 'No messages yet'
+                                            : lastMessage,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 12.8,
+                                          fontWeight: FontWeight.w500,
+                                          color: widget.dark
+                                              ? Colors.white70
+                                              : Colors.grey.shade700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      lastTime,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: widget.dark
+                                            ? Colors.white54
+                                            : const Color(0xFF9A8B78),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    const Icon(
+                                      Icons.arrow_forward_ios_rounded,
+                                      size: 14,
+                                      color: Color(0xFFC9A24A),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context) {
+    final Color primaryText = Theme.of(context).colorScheme.onSurface;
+    final Color secondaryText = widget.dark
+        ? Colors.white54
+        : const Color(0xFF9A8B78);
+
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.chat_bubble_outline_rounded,
+            size: 58,
+            color: Color(0xFFC9A24A),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            "No tenant chats yet",
+            style: GoogleFonts.inter(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: primaryText,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            "Tenant conversations will appear here.",
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: secondaryText,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
