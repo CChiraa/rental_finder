@@ -57,6 +57,9 @@ class _BcChatScreenState extends State<BcChatScreen> {
     final Color secondaryText = widget.dark
         ? Colors.white70
         : const Color(0xFF7B6243);
+    final Color goldText = widget.dark
+        ? const Color(0xFFE6BC6D)
+        : const Color(0xFFC9A24A);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -79,7 +82,7 @@ class _BcChatScreenState extends State<BcChatScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "Reply to tenant messages and manage property conversations here.",
+              "Tap a tenant name to open the conversation.",
               style: GoogleFonts.inter(
                 fontSize: 13.2,
                 fontWeight: FontWeight.w500,
@@ -88,6 +91,82 @@ class _BcChatScreenState extends State<BcChatScreen> {
               ),
             ),
             const SizedBox(height: 18),
+
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: widget.dark
+                    ? Colors.white.withOpacity(0.05)
+                    : Colors.white.withOpacity(0.52),
+                borderRadius: BorderRadius.circular(26),
+                border: Border.all(
+                  color: widget.dark
+                      ? Colors.white.withOpacity(0.10)
+                      : const Color(0xFFD6BC91).withOpacity(0.8),
+                  width: 1.2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: widget.dark
+                        ? Colors.black.withOpacity(0.16)
+                        : const Color(0xFFD8AF5B).withOpacity(0.08),
+                    blurRadius: 14,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _summaryCard(
+                      title: "Chats",
+                      value: chats.length.toString(),
+                      icon: Icons.chat_bubble_outline_rounded,
+                      color: const Color(0xFF00A86B),
+                      dark: widget.dark,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _summaryCard(
+                      title: "Unread",
+                      value: "3",
+                      icon: Icons.mark_chat_unread_rounded,
+                      color: const Color(0xFFE53935),
+                      dark: widget.dark,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 22),
+
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "Chat List",
+                  style: GoogleFonts.inter(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: primaryText,
+                  ),
+                ),
+                Text(
+                  "Recent",
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: goldText,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 12),
+
             Expanded(
               child: chats.isEmpty
                   ? _buildEmptyState(context)
@@ -103,7 +182,8 @@ class _BcChatScreenState extends State<BcChatScreen> {
                             (messages.isNotEmpty ? messages.last['text'] : '');
                         final lastTime = chat['lastTime'] ?? '';
 
-                        return GestureDetector(
+                        return InkWell(
+                          borderRadius: BorderRadius.circular(24),
                           onTap: () {
                             Navigator.push(
                               context,
@@ -225,6 +305,65 @@ class _BcChatScreenState extends State<BcChatScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _summaryCard({
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color color,
+    required bool dark,
+  }) {
+    return Container(
+      height: 100,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: dark
+            ? Colors.white.withOpacity(0.05)
+            : Colors.white.withOpacity(0.42),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: dark
+              ? Colors.white.withOpacity(0.08)
+              : const Color(0xFFD9BC8A).withOpacity(0.35),
+        ),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 21,
+            backgroundColor: color.withOpacity(0.12),
+            child: Icon(icon, color: color),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  style: GoogleFonts.inter(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: dark ? Colors.white : const Color(0xFF1D1D1F),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  title,
+                  style: GoogleFonts.inter(
+                    fontSize: 12.4,
+                    fontWeight: FontWeight.w500,
+                    color: dark ? Colors.white70 : Colors.grey.shade700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

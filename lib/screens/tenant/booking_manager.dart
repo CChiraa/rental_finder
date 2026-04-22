@@ -20,7 +20,11 @@ class BookingManager {
       'checkOut': checkOut,
       'paymentMethod': paymentMethod,
       'paymentStatus': status,
-      'bookingStatus': status == 'Successful' ? 'Confirmed' : 'Pending',
+      'bookingStatus': status == 'Successful'
+          ? 'Confirmed'
+          : status == 'Rejected'
+          ? 'Rejected'
+          : 'Pending',
       'receiptPath': receiptPath ?? '',
       'createdAt': DateTime.now().toString(),
     });
@@ -37,6 +41,8 @@ class BookingManager {
     bookings[index]['paymentStatus'] = paymentStatus;
     bookings[index]['bookingStatus'] = paymentStatus == 'Successful'
         ? 'Confirmed'
+        : paymentStatus == 'Rejected'
+        ? 'Rejected'
         : 'Pending';
 
     if (receiptPath != null) {

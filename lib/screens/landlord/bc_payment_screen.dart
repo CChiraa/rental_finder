@@ -18,6 +18,35 @@ class BcPaymentScreen extends StatelessWidget {
     final Color primaryText = Theme.of(context).colorScheme.onSurface;
     final Color secondaryText = dark ? Colors.white70 : const Color(0xFF7B6243);
 
+    final List<Map<String, dynamic>> payments = [
+      {
+        'title': 'Receipt uploaded for Studio Apartment',
+        'subtitle': 'Tenant: Daniel • RM120 paid',
+        'status': 'Review Payment',
+        'statusColor': const Color(0xFF355CDE),
+        'tenantName': 'Daniel',
+        'propertyName': 'Studio Apartment',
+        'amount': 'RM120',
+        'paymentDate': '22 Apr 2026',
+        'method': 'Online Transfer',
+        'reference': 'TXN-120938',
+        'note': 'Receipt image uploaded by tenant.',
+      },
+      {
+        'title': 'Proof sent for Condo near KLCC',
+        'subtitle': 'Tenant: Aina • RM178 paid',
+        'status': 'Awaiting Confirmation',
+        'statusColor': const Color(0xFFFF9800),
+        'tenantName': 'Aina',
+        'propertyName': 'Condo near KLCC',
+        'amount': 'RM178',
+        'paymentDate': '24 Apr 2026',
+        'method': 'QR Payment',
+        'reference': 'TXN-998271',
+        'note': 'Waiting for landlord verification.',
+      },
+    ];
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
@@ -48,23 +77,14 @@ class BcPaymentScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 18),
-            _paymentCard(
-              dark: dark,
-              glassCard: glassCard,
-              glassBorder: glassBorder,
-              title: "Receipt uploaded for Studio Apartment",
-              subtitle: "Tenant: Daniel • RM120 paid",
-              status: "Review Payment",
-              statusColor: const Color(0xFF355CDE),
-            ),
-            _paymentCard(
-              dark: dark,
-              glassCard: glassCard,
-              glassBorder: glassBorder,
-              title: "Proof sent for Condo near KLCC",
-              subtitle: "Tenant: Aina • RM178 paid",
-              status: "Awaiting Confirmation",
-              statusColor: const Color(0xFFFF9800),
+            ...payments.map(
+              (payment) => _paymentCard(
+                context: context,
+                dark: dark,
+                glassCard: glassCard,
+                glassBorder: glassBorder,
+                payment: payment,
+              ),
             ),
           ],
         ),
@@ -74,14 +94,14 @@ class BcPaymentScreen extends StatelessWidget {
 }
 
 Widget _paymentCard({
+  required BuildContext context,
   required bool dark,
   required Color glassCard,
   required Color glassBorder,
-  required String title,
-  required String subtitle,
-  required String status,
-  required Color statusColor,
+  required Map<String, dynamic> payment,
 }) {
+  final Color statusColor = payment['statusColor'] as Color;
+
   return Container(
     margin: const EdgeInsets.only(bottom: 14),
     padding: const EdgeInsets.all(16),
@@ -119,7 +139,7 @@ Widget _paymentCard({
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    title,
+                    payment['title'],
                     style: GoogleFonts.inter(
                       fontWeight: FontWeight.w700,
                       fontSize: 14.8,
@@ -128,7 +148,7 @@ Widget _paymentCard({
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    subtitle,
+                    payment['subtitle'],
                     style: GoogleFonts.inter(
                       color: dark ? Colors.white70 : Colors.grey.shade700,
                       fontSize: 12.8,
@@ -137,7 +157,7 @@ Widget _paymentCard({
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    status,
+                    payment['status'],
                     style: GoogleFonts.inter(
                       color: statusColor,
                       fontSize: 12.4,
@@ -150,16 +170,107 @@ Widget _paymentCard({
           ],
         ),
         const SizedBox(height: 14),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            onPressed: () => _showPaymentDetailsDialog(
+              context: context,
+              dark: dark,
+              payment: payment,
+            ),
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: glassBorder),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 13),
+            ),
+            child: Text(
+              "View Details",
+              style: GoogleFonts.inter(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+void _showPaymentDetailsDialog({
+  required BuildContext context,
+  required bool dark,
+  required Map<String, dynamic> payment,
+}) {
+  final Color primaryText = Theme.of(context).colorScheme.onSurface;
+  final Color secondaryText = dark ? Colors.white70 : const Color(0xFF7B6243);
+
+  showDialog(
+    context: context,
+    builder: (_) => AlertDialog(
+      backgroundColor: dark ? const Color(0xFF1E1E1E) : Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      title: Text(
+        "Payment Details",
+        style: GoogleFonts.inter(
+          fontSize: 17,
+          fontWeight: FontWeight.w700,
+          color: primaryText,
+        ),
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _detailRow(
+            'Tenant',
+            payment['tenantName'],
+            primaryText,
+            secondaryText,
+          ),
+          _detailRow(
+            'Property',
+            payment['propertyName'],
+            primaryText,
+            secondaryText,
+          ),
+          _detailRow('Amount', payment['amount'], primaryText, secondaryText),
+          _detailRow(
+            'Payment Date',
+            payment['paymentDate'],
+            primaryText,
+            secondaryText,
+          ),
+          _detailRow('Method', payment['method'], primaryText, secondaryText),
+          _detailRow(
+            'Reference',
+            payment['reference'],
+            primaryText,
+            secondaryText,
+          ),
+          _detailRow('Status', payment['status'], primaryText, secondaryText),
+          _detailRow('Note', payment['note'], primaryText, secondaryText),
+        ],
+      ),
+      actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
+      actions: [
         Row(
           children: [
             Expanded(
               child: OutlinedButton(
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Payment rejected')),
+                  );
+                },
                 style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: glassBorder),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(
+                    color: dark ? Colors.white24 : Colors.grey.shade300,
                   ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 13),
                 ),
                 child: Text(
                   "Reject",
@@ -170,13 +281,19 @@ Widget _paymentCard({
             const SizedBox(width: 10),
             Expanded(
               child: ElevatedButton(
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Payment verified')),
+                  );
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFC9A24A),
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(14),
                   ),
+                  padding: const EdgeInsets.symmetric(vertical: 13),
                 ),
                 child: Text(
                   "Verify",
@@ -187,6 +304,33 @@ Widget _paymentCard({
           ],
         ),
       ],
+    ),
+  );
+}
+
+Widget _detailRow(
+  String label,
+  String value,
+  Color primaryText,
+  Color secondaryText,
+) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: RichText(
+      text: TextSpan(
+        style: GoogleFonts.inter(
+          fontSize: 13,
+          color: secondaryText,
+          height: 1.5,
+        ),
+        children: [
+          TextSpan(
+            text: '$label: ',
+            style: TextStyle(fontWeight: FontWeight.w700, color: primaryText),
+          ),
+          TextSpan(text: value),
+        ],
+      ),
     ),
   );
 }

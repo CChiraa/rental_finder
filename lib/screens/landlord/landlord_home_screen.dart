@@ -5,7 +5,7 @@ import 'landlord_home_tab.dart';
 import 'landlord_availability_tab.dart';
 import 'landlord_add_tab.dart';
 import 'landlord_book_chat_tab.dart';
-import 'profile_screen_landlord.dart';
+import 'landlord_profile_screen.dart';
 
 class LandlordHomeScreen extends StatefulWidget {
   final String userName;
@@ -18,6 +18,51 @@ class LandlordHomeScreen extends StatefulWidget {
 
 class _LandlordHomeScreenState extends State<LandlordHomeScreen> {
   int _currentIndex = 0;
+
+  final List<Map<String, dynamic>> landlordProperties = [
+    {
+      'title': 'Skyline Residence',
+      'location': 'Kuala Lumpur',
+      'price': 'RM 1,800 / month',
+      'image': '',
+    },
+    {
+      'title': 'Urban Loft Studio',
+      'location': 'Petaling Jaya',
+      'price': 'RM 1,250 / month',
+      'image': '',
+    },
+  ];
+
+  final List<Map<String, dynamic>> landlordBookings = [
+    {
+      'title': 'Skyline Residence',
+      'tenantName': 'Aina',
+      'checkIn': '2026-04-25',
+      'checkOut': '2026-05-25',
+      'bookingStatus': 'Pending',
+    },
+    {
+      'title': 'Urban Loft Studio',
+      'tenantName': 'Hakim',
+      'checkIn': '2026-04-20',
+      'checkOut': '2026-06-20',
+      'bookingStatus': 'Confirmed',
+    },
+  ];
+
+  final List<Map<String, dynamic>> landlordPayouts = [
+    {
+      'title': 'April Rental Payout',
+      'date': '2026-04-18',
+      'amount': 'RM 1,800',
+    },
+    {
+      'title': 'March Rental Payout',
+      'date': '2026-03-18',
+      'amount': 'RM 1,250',
+    },
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +102,6 @@ class _LandlordHomeScreenState extends State<LandlordHomeScreen> {
     final Color primaryText = colorScheme.onSurface;
     final Color secondaryText = dark ? Colors.white70 : const Color(0xFF7B6243);
 
-    // softer premium colors to match the screenshot style
     final Color navSelectedColor = dark
         ? const Color(0xFFE6BC6D)
         : const Color(0xFFC9A24A);
@@ -102,6 +146,9 @@ class _LandlordHomeScreenState extends State<LandlordHomeScreen> {
       LandlordProfileScreen(
         userName: widget.userName,
         userEmail: 'landlord@email.com',
+        properties: landlordProperties,
+        bookings: landlordBookings,
+        payouts: landlordPayouts,
       ),
     ];
 
