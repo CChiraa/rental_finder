@@ -4,6 +4,7 @@ import 'package:smart_rental_app/screens/signup.dart';
 import 'package:smart_rental_app/screens/forget_password.dart';
 import 'package:smart_rental_app/screens/tenant/tenant_home_screen.dart';
 import 'package:smart_rental_app/screens/landlord/landlord_home_screen.dart';
+import 'package:smart_rental_app/services/auth_service.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -17,7 +18,6 @@ class _SignInScreenState extends State<SignInScreen> {
 
   bool rememberPassword = true;
   bool obscurePassword = true;
-  String selectedRole = 'Tenant';
 
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
@@ -27,6 +27,104 @@ class _SignInScreenState extends State<SignInScreen> {
     emailController.dispose();
     passwordController.dispose();
     super.dispose();
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
+  }
+
+  void _showRoleChoiceDialog(String name, String email) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) {
+        return AlertDialog(
+          title: const Text('Continue as'),
+          content: const Text('Choose which mode you want to use.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => HomeScreen(userName: name)),
+                );
+              },
+              child: const Text('Tenant'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        LandlordHomeScreen(userName: name, userEmail: email),
+                  ),
+                );
+              },
+              child: const Text('Landlord'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _signInUser() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    try {
+      final email = emailController.text.trim();
+      final password = passwordController.text.trim();
+
+      final userData = await AuthService().signIn(
+        email: email,
+        password: password,
+      );
+
+      if (!mounted) return;
+
+      final List roles = userData['roles'] ?? [];
+      final name = userData['name'] ?? 'User';
+      final userEmail = userData['email'] ?? email;
+
+      if (roles.length == 1 && roles.contains('Tenant')) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => HomeScreen(userName: name)),
+        );
+      } else if (roles.length == 1 && roles.contains('Landlord')) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                LandlordHomeScreen(userName: name, userEmail: userEmail),
+          ),
+        );
+      } else if (roles.contains('Tenant') && roles.contains('Landlord')) {
+        _showRoleChoiceDialog(name, userEmail);
+      } else {
+        _showError('No role found for this account.');
+      }
+    } catch (e) {
+      String errorMessage = "Login failed. Please try again.";
+
+      if (e.toString().contains("invalid-credential")) {
+        errorMessage = "Invalid email or password.";
+      } else if (e.toString().contains("user-not-found")) {
+        errorMessage = "Account not found.";
+      } else if (e.toString().contains("wrong-password")) {
+        errorMessage = "Incorrect password.";
+      } else if (e.toString().contains("network-request-failed")) {
+        errorMessage = "Check your internet connection.";
+      }
+
+      if (!mounted) return;
+      _showError(errorMessage);
+    }
   }
 
   @override
@@ -66,7 +164,6 @@ class _SignInScreenState extends State<SignInScreen> {
 
     final Color textPrimary = colorScheme.onSurface;
     final Color textSecondary = dark ? Colors.white70 : const Color(0xFF8B7355);
-
     final Color subtleText = dark ? Colors.white60 : const Color(0xFF6F5A40);
 
     return Scaffold(
@@ -227,17 +324,6 @@ class _SignInScreenState extends State<SignInScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Select Role',
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: secondaryText,
-              ),
-            ),
-            const SizedBox(height: 12),
-            _buildRoleSelector(dark),
-            const SizedBox(height: 20),
             _luxuryField(
               label: 'Email',
               icon: Icons.email_outlined,
@@ -276,8 +362,8 @@ class _SignInScreenState extends State<SignInScreen> {
                 if (value == null || value.isEmpty) {
                   return 'Please enter your password';
                 }
-                if (value.length < 6) {
-                  return 'Password must be at least 6 characters';
+                if (value.length < 8) {
+                  return 'Password must be at least 8 characters';
                 }
                 return null;
               },
@@ -349,105 +435,6 @@ class _SignInScreenState extends State<SignInScreen> {
             _googleButton(dark),
             const SizedBox(height: 20),
             _signupRedirect(subtleText),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRoleSelector(bool dark) {
-    return Row(
-      children: [
-        Expanded(
-          child: _roleCard(
-            role: 'Tenant',
-            icon: Icons.person_outline_rounded,
-            dark: dark,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _roleCard(
-            role: 'Landlord',
-            icon: Icons.home_work_outlined,
-            dark: dark,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _roleCard({
-    required String role,
-    required IconData icon,
-    required bool dark,
-  }) {
-    final bool isSelected = selectedRole == role;
-
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          selectedRole = role;
-        });
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOut,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          gradient: isSelected
-              ? const LinearGradient(
-                  colors: [Color(0xFFE6BC6D), Color(0xFFBE8233)],
-                )
-              : null,
-          color: isSelected
-              ? null
-              : dark
-              ? Colors.white.withOpacity(0.06)
-              : Colors.white.withOpacity(0.7),
-          border: Border.all(
-            color: isSelected
-                ? Colors.transparent
-                : dark
-                ? Colors.white.withOpacity(0.12)
-                : const Color(0xFFD6B36A).withOpacity(0.65),
-            width: 1.2,
-          ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: const Color(0xFFC89243).withOpacity(0.18),
-                    blurRadius: 14,
-                    offset: const Offset(0, 8),
-                  ),
-                ]
-              : null,
-        ),
-        child: Column(
-          children: [
-            Icon(
-              icon,
-              color: isSelected
-                  ? Colors.white
-                  : dark
-                  ? Colors.white70
-                  : const Color(0xFF8D6A3B),
-              size: 24,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              role,
-              style: GoogleFonts.inter(
-                color: isSelected
-                    ? Colors.white
-                    : dark
-                    ? Colors.white70
-                    : const Color(0xFF6B5338),
-                fontWeight: FontWeight.w600,
-                fontSize: 13.5,
-              ),
-            ),
           ],
         ),
       ),
@@ -541,25 +528,7 @@ class _SignInScreenState extends State<SignInScreen> {
           ],
         ),
         child: ElevatedButton(
-          onPressed: () {
-            if (_formKey.currentState!.validate()) {
-              String name = emailController.text.split('@')[0];
-
-              if (selectedRole == 'Tenant') {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => HomeScreen(userName: name)),
-                );
-              } else {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => LandlordHomeScreen(userName: name),
-                  ),
-                );
-              }
-            }
-          },
+          onPressed: _signInUser,
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.transparent,
             shadowColor: Colors.transparent,

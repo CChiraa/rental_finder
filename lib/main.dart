@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:smart_rental_app/screens/welcome_screen.dart';
 import 'package:smart_rental_app/screens/tenant/chat_detail_screen.dart';
 import 'package:smart_rental_app/theme/theme.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+
   runApp(const MyApp());
 }
 

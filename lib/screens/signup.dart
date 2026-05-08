@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:smart_rental_app/screens/signin.dart';
 import 'package:smart_rental_app/screens/tenant/tenant_home_screen.dart';
 import 'package:smart_rental_app/screens/landlord/landlord_home_screen.dart';
+import 'package:smart_rental_app/services/auth_service.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -309,8 +310,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 if (value == null || value.isEmpty) {
                   return 'Please enter your password';
                 }
-                if (value.length < 6) {
-                  return 'Password must be at least 6 characters';
+                if (value.length < 8) {
+                  return 'Password must be at least 8 characters';
                 }
                 return null;
               },
@@ -578,30 +579,66 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ],
         ),
         child: ElevatedButton(
-          onPressed: () {
-            if (_formSignupKey.currentState!.validate() && agreePersonalData) {
-              final String userName = nameController.text.trim();
+          onPressed: () async {
+            if (!_formSignupKey.currentState!.validate()) return;
+
+            if (!agreePersonalData) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Please agree to the terms first'),
+                ),
+              );
+              return;
+            }
+
+            try {
+              final String name = nameController.text.trim();
+              final String email = emailController.text.trim();
+              final String password = passwordController.text.trim();
+
+              await AuthService().signUp(
+                name: name,
+                email: email,
+                password: password,
+                role: selectedRole,
+                nric: selectedRole == 'Landlord'
+                    ? icController.text.trim()
+                    : null,
+              );
+
+              if (!context.mounted) return;
 
               if (selectedRole == 'Tenant') {
                 Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => HomeScreen(userName: userName),
-                  ),
+                  MaterialPageRoute(builder: (_) => HomeScreen(userName: name)),
                 );
               } else {
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
-                    builder: (context) =>
-                        LandlordHomeScreen(userName: userName),
+                    builder: (_) =>
+                        LandlordHomeScreen(userName: name, userEmail: email),
                   ),
                 );
               }
-            } else if (!agreePersonalData) {
+            } catch (e) {
+              String errorMessage = "Signup failed. Please try again.";
+
+              if (e.toString().contains("email-already-in-use")) {
+                errorMessage = "This email is already registered.";
+              } else if (e.toString().contains("weak-password")) {
+                errorMessage = "Password must be at least 6 characters.";
+              } else if (e.toString().contains("invalid-email")) {
+                errorMessage = "Please enter a valid email address.";
+              } else if (e.toString().contains("network-request-failed")) {
+                errorMessage = "Check your internet connection.";
+              }
+
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Please agree to the terms first'),
+                SnackBar(
+                  content: Text(errorMessage),
+                  backgroundColor: Colors.red,
                 ),
               );
             }

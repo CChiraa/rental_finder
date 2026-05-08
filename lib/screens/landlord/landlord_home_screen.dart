@@ -9,8 +9,13 @@ import 'landlord_profile_screen.dart';
 
 class LandlordHomeScreen extends StatefulWidget {
   final String userName;
+  final String userEmail;
 
-  const LandlordHomeScreen({super.key, required this.userName});
+  const LandlordHomeScreen({
+    super.key,
+    required this.userName,
+    required this.userEmail,
+  });
 
   @override
   State<LandlordHomeScreen> createState() => _LandlordHomeScreenState();
@@ -145,7 +150,7 @@ class _LandlordHomeScreenState extends State<LandlordHomeScreen> {
       ),
       LandlordProfileScreen(
         userName: widget.userName,
-        userEmail: 'landlord@email.com',
+        userEmail: widget.userEmail,
         properties: landlordProperties,
         bookings: landlordBookings,
         payouts: landlordPayouts,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:smart_rental_app/services/auth_service.dart';
 
 class ForgetPasswordScreen extends StatefulWidget {
   const ForgetPasswordScreen({super.key});
@@ -30,18 +31,12 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
     try {
       final email = emailController.text.trim();
 
-      // TODO:
-      // Put your auth reset password logic here
-      // Example Firebase:
-      // await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
-
-      // Example Supabase:
-      // await Supabase.instance.client.auth.resetPasswordForEmail(email);
+      await AuthService().resetPassword(email);
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Password reset link has been sent to $email')),
+        SnackBar(content: Text('Password reset link sent to $email')),
       );
 
       Navigator.pop(context);
@@ -102,7 +97,7 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
                 child: ElevatedButton(
                   onPressed: isLoading ? null : _sendResetLink,
                   child: isLoading
-                      ? const CircularProgressIndicator()
+                      ? const CircularProgressIndicator(color: Colors.white)
                       : const Text('Send Reset Link'),
                 ),
               ),
