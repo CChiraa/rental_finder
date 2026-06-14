@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:smart_rental_app/main.dart';
 import 'package:smart_rental_app/screens/welcome_screen.dart';
+import 'package:smart_rental_app/services/auth_service.dart';
+import 'package:smart_rental_app/screens/tenant/tenant_home_screen.dart';
 
 import 'l_edit_profile_screen.dart';
 import 'l_my_properties_screen.dart';
@@ -104,13 +106,71 @@ class _LandlordProfileScreenState extends State<LandlordProfileScreen> {
     }
   }
 
-  void _showLogoutDialog() {
+  Future<void> _switchToTenant() async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Text('Switch to Tenant?'),
+        content: const Text(
+          'You will switch from Landlord mode to Tenant mode.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Switch'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      final userData = await AuthService().getUserData();
+
+      if (userData == null) {
+        throw Exception('User data not found');
+      }
+
+      final List<dynamic> roles = userData['roles'] ?? [];
+
+      if (roles.contains('Tenant')) {
+        await AuthService().switchRole('Tenant');
+      } else {
+        await AuthService().addTenantRole();
+      }
+
+      if (!mounted) return;
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              TenantHomeScreen(userName: currentName, userEmail: currentEmail),
+        ),
+        (route) => false,
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to switch to Tenant: $e')));
+    }
+  }
+
+  Future<void> _showLogoutDialog() async {
     final bool dark = Theme.of(context).brightness == Brightness.dark;
     final Color dialogBg = dark ? const Color(0xFF1E293B) : Colors.white;
     final Color primaryText = dark ? Colors.white : const Color(0xFF2C2621);
     final Color secondaryText = dark ? Colors.white70 : const Color(0xFF7B664C);
 
-    showDialog(
+    final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: dialogBg,
@@ -128,21 +188,14 @@ class _LandlordProfileScreenState extends State<LandlordProfileScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(context, false),
             child: Text(
               'Cancel',
               style: GoogleFonts.inter(color: secondaryText),
             ),
           ),
           TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (_) => const WelcomeScreen()),
-                (route) => false,
-              );
-            },
+            onPressed: () => Navigator.pop(context, true),
             child: Text(
               'Logout',
               style: GoogleFonts.inter(
@@ -153,6 +206,18 @@ class _LandlordProfileScreenState extends State<LandlordProfileScreen> {
           ),
         ],
       ),
+    );
+
+    if (confirm != true) return;
+
+    await AuthService().logout();
+
+    if (!mounted) return;
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+      (route) => false,
     );
   }
 
@@ -183,10 +248,6 @@ class _LandlordProfileScreenState extends State<LandlordProfileScreen> {
             end: Alignment.bottomRight,
           );
 
-    final listingsCount = widget.properties.length;
-    final bookingsCount = widget.bookings.length;
-    final payoutsCount = widget.payouts.length;
-
     return Scaffold(
       backgroundColor: screenBg,
       body: Container(
@@ -195,9 +256,9 @@ class _LandlordProfileScreenState extends State<LandlordProfileScreen> {
           child: Column(
             children: [
               _buildHeader(
-                listingsCount: listingsCount,
-                bookingsCount: bookingsCount,
-                payoutsCount: payoutsCount,
+                listingsCount: widget.properties.length,
+                bookingsCount: widget.bookings.length,
+                payoutsCount: widget.payouts.length,
                 dark: dark,
                 primaryText: primaryText,
                 mutedText: mutedText,
@@ -218,6 +279,15 @@ class _LandlordProfileScreenState extends State<LandlordProfileScreen> {
                       title: "Edit Profile",
                       subtitle: "Update your personal information",
                       onTap: _openEditProfile,
+                      cardBg: cardBg,
+                      primaryText: primaryText,
+                      secondaryText: secondaryText,
+                    ),
+                    _menuTile(
+                      icon: Icons.swap_horiz_rounded,
+                      title: "Switch to Tenant",
+                      subtitle: "Use this account as a tenant",
+                      onTap: _switchToTenant,
                       cardBg: cardBg,
                       primaryText: primaryText,
                       secondaryText: secondaryText,
@@ -248,9 +318,8 @@ class _LandlordProfileScreenState extends State<LandlordProfileScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => LandlordBookingManagementScreen(
-                              bookings: widget.bookings,
-                            ),
+                            builder: (_) =>
+                                const LandlordBookingManagementScreen(),
                           ),
                         );
                       },

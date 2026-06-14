@@ -1,5 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:smart_rental_app/services/property_service.dart';
 
 class TenantFeedTab extends StatelessWidget {
   final List<Map<String, dynamic>> properties;
@@ -21,7 +23,6 @@ class TenantFeedTab extends StatelessWidget {
 
     final Color primaryText = dark ? Colors.white : const Color(0xFF2C2621);
     final Color secondaryText = dark ? Colors.white70 : const Color(0xFF7B664C);
-    final Color mutedText = dark ? Colors.white60 : const Color(0xFF8B7355);
 
     final Gradient backgroundGradient = dark
         ? const LinearGradient(
@@ -37,8 +38,30 @@ class TenantFeedTab extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(gradient: backgroundGradient),
-      child: properties.isEmpty
-          ? Center(
+      child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: PropertyService().getPropertiesStream(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Text(
+                'Failed to load properties',
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  color: secondaryText,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            );
+          }
+
+          final docs = snapshot.data?.docs ?? [];
+
+          if (docs.isEmpty) {
+            return Center(
               child: Text(
                 "No property posts available yet",
                 style: GoogleFonts.inter(
@@ -47,29 +70,38 @@ class TenantFeedTab extends StatelessWidget {
                   fontWeight: FontWeight.w500,
                 ),
               ),
-            )
-          : ListView(
-              padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
-              children: [
-                Text(
-                  'Feed',
-                  style: GoogleFonts.cormorantGaramond(
-                    fontSize: 34,
-                    fontWeight: FontWeight.w700,
-                    color: primaryText,
-                  ),
+            );
+          }
+
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+            children: [
+              Text(
+                'Feed',
+                style: GoogleFonts.cormorantGaramond(
+                  fontSize: 34,
+                  fontWeight: FontWeight.w700,
+                  color: primaryText,
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  'Latest property posts from landlords',
-                  style: GoogleFonts.inter(fontSize: 14, color: secondaryText),
-                ),
-                const SizedBox(height: 18),
-                ...properties.map(
-                  (property) => _buildFeedCard(context, property),
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Latest property posts from landlords',
+                style: GoogleFonts.inter(fontSize: 14, color: secondaryText),
+              ),
+              const SizedBox(height: 18),
+              ...docs.map((doc) {
+                final Map<String, dynamic> property = doc.data();
+
+                property['id'] = doc.id.hashCode;
+                property['docId'] = doc.id;
+
+                return _buildFeedCard(context, property);
+              }),
+            ],
+          );
+        },
+      ),
     );
   }
 
@@ -101,6 +133,9 @@ class TenantFeedTab extends StatelessWidget {
 
     final Color goldColor = const Color(0xFFB8964F);
 
+    final List images = property['images'] ?? [];
+    final String imageUrl = images.isNotEmpty ? images.first.toString() : '';
+
     return Container(
       margin: const EdgeInsets.only(bottom: 18),
       decoration: BoxDecoration(
@@ -124,7 +159,6 @@ class TenantFeedTab extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // top header
           Container(
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
             decoration: BoxDecoration(
@@ -161,7 +195,7 @@ class TenantFeedTab extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        property['postedBy'] ?? 'Landlord Post',
+                        property['landlordName'] ?? 'Landlord Post',
                         style: GoogleFonts.inter(
                           fontSize: 14.5,
                           fontWeight: FontWeight.w700,
@@ -172,7 +206,7 @@ class TenantFeedTab extends StatelessWidget {
                       Row(
                         children: [
                           Text(
-                            property['time'] ?? '2h ago',
+                            'Just now',
                             style: GoogleFonts.inter(
                               fontSize: 12,
                               color: mutedText,
@@ -255,29 +289,18 @@ class TenantFeedTab extends StatelessWidget {
             ),
           ),
 
-          ClipRRect(
-            borderRadius: BorderRadius.circular(0),
-            child: Image.asset(
-              property['image'] ?? '',
-              width: double.infinity,
-              height: 220,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  height: 220,
-                  width: double.infinity,
-                  color: dark
-                      ? const Color(0xFF243247)
-                      : const Color(0xFFF3E8D7),
-                  alignment: Alignment.center,
-                  child: const Icon(
-                    Icons.image_not_supported_outlined,
-                    size: 40,
-                    color: Color(0xFFB8964F),
-                  ),
-                );
-              },
-            ),
+          SizedBox(
+            width: double.infinity,
+            height: 220,
+            child: imageUrl.isNotEmpty
+                ? Image.network(
+                    imageUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return _emptyImageBox(dark);
+                    },
+                  )
+                : _emptyImageBox(dark),
           ),
 
           Padding(
@@ -328,6 +351,20 @@ class TenantFeedTab extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _emptyImageBox(bool dark) {
+    return Container(
+      height: 220,
+      width: double.infinity,
+      color: dark ? const Color(0xFF243247) : const Color(0xFFF3E8D7),
+      alignment: Alignment.center,
+      child: const Icon(
+        Icons.image_not_supported_outlined,
+        size: 40,
+        color: Color(0xFFB8964F),
       ),
     );
   }

@@ -49,7 +49,10 @@ class _SignInScreenState extends State<SignInScreen> {
                 Navigator.pop(context);
                 Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(builder: (_) => HomeScreen(userName: name)),
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        TenantHomeScreen(userName: name, userEmail: email),
+                  ),
                 );
               },
               child: const Text('Tenant'),
@@ -87,16 +90,19 @@ class _SignInScreenState extends State<SignInScreen> {
 
       if (!mounted) return;
 
-      final List roles = userData['roles'] ?? [];
       final name = userData['name'] ?? 'User';
       final userEmail = userData['email'] ?? email;
+      final String activeRole = userData['activeRole'] ?? 'Tenant';
 
-      if (roles.length == 1 && roles.contains('Tenant')) {
+      if (activeRole == 'Tenant') {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => HomeScreen(userName: name)),
+          MaterialPageRoute(
+            builder: (_) =>
+                TenantHomeScreen(userName: name, userEmail: userEmail),
+          ),
         );
-      } else if (roles.length == 1 && roles.contains('Landlord')) {
+      } else if (activeRole == 'Landlord') {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -104,10 +110,8 @@ class _SignInScreenState extends State<SignInScreen> {
                 LandlordHomeScreen(userName: name, userEmail: userEmail),
           ),
         );
-      } else if (roles.contains('Tenant') && roles.contains('Landlord')) {
-        _showRoleChoiceDialog(name, userEmail);
       } else {
-        _showError('No role found for this account.');
+        _showRoleChoiceDialog(name, userEmail);
       }
     } catch (e) {
       String errorMessage = "Login failed. Please try again.";
@@ -124,6 +128,39 @@ class _SignInScreenState extends State<SignInScreen> {
 
       if (!mounted) return;
       _showError(errorMessage);
+    }
+  }
+
+  Future<void> _signInWithGoogle() async {
+    try {
+      final userData = await AuthService().signInWithGoogle();
+
+      if (!mounted) return;
+
+      final String name = userData['name'] ?? 'User';
+      final String userEmail = userData['email'] ?? '';
+      final String activeRole = userData['activeRole'] ?? 'Tenant';
+
+      if (activeRole == 'Landlord') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                LandlordHomeScreen(userName: name, userEmail: userEmail),
+          ),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                TenantHomeScreen(userName: name, userEmail: userEmail),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      _showError('Google sign in failed: $e');
     }
   }
 
@@ -588,7 +625,7 @@ class _SignInScreenState extends State<SignInScreen> {
       width: double.infinity,
       height: 56,
       child: OutlinedButton.icon(
-        onPressed: () {},
+        onPressed: _signInWithGoogle,
         icon: Icon(
           Icons.g_mobiledata_rounded,
           size: 30,

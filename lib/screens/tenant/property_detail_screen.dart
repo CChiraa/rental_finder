@@ -3,7 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:smart_rental_app/screens/tenant/booking_tenant.dart';
 import 'package:smart_rental_app/screens/tenant/chat_detail_screen.dart';
-import 'package:smart_rental_app/screens/tenant/chat_manager.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:smart_rental_app/services/chat_service.dart';
 import 'favorite_manager.dart';
 
 class PropertyDetailScreen extends StatefulWidget {
@@ -21,8 +22,8 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
   bool get isFavorite => FavoriteManager.isFavorite(widget.property);
 
   LatLng get location => LatLng(
-    (widget.property['lat'] ?? 0.0).toDouble(),
-    (widget.property['lng'] ?? 0.0).toDouble(),
+    ((widget.property['lat'] ?? 3.1390) as num).toDouble(),
+    ((widget.property['lng'] ?? 101.6869) as num).toDouble(),
   );
 
   void _toggleFavorite() {
@@ -46,16 +47,45 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     );
   }
 
-  void _openChat() {
-    final chat = ChatManager.getOrCreateChat(widget.property);
+  Future<void> _openChat() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => ChatDetailScreen(chat: chat)),
-    ).then((_) {
+      if (user == null) {
+        throw Exception('User not logged in');
+      }
+
+      final chatId = await ChatService().createOrGetChat(
+        tenantId: user.uid,
+        tenantName: user.displayName ?? 'Tenant',
+        landlordId: widget.property['landlordId'] ?? '',
+        landlordName: widget.property['landlordName'] ?? 'Landlord',
+        propertyId: widget.property['docId'] ?? '',
+        propertyTitle: widget.property['title'] ?? 'Property',
+        propertyImage: '',
+      );
+
       if (!mounted) return;
-      setState(() {});
-    });
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChatDetailScreen(
+            chat: {
+              'chatId': chatId,
+              'landlord': widget.property['landlordName'] ?? 'Landlord',
+              'propertyTitle': widget.property['title'] ?? 'Property',
+            },
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Unable to open chat: $e')));
+    }
   }
 
   Future<void> _openBookingSheet() async {
@@ -93,6 +123,33 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     }
   }
 
+  Widget _propertyImage(bool dark) {
+    final List images = widget.property['images'] ?? [];
+    final String imageUrl = images.isNotEmpty ? images.first.toString() : '';
+
+    if (imageUrl.isNotEmpty) {
+      return Image.network(
+        imageUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _emptyImage(dark),
+      );
+    }
+
+    return _emptyImage(dark);
+  }
+
+  Widget _emptyImage(bool dark) {
+    return Container(
+      color: dark ? const Color(0xFF2A2A2A) : const Color(0xFFF3E8D7),
+      alignment: Alignment.center,
+      child: const Icon(
+        Icons.home_work_rounded,
+        size: 60,
+        color: Color(0xFFB17B30),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool dark = Theme.of(context).brightness == Brightness.dark;
@@ -101,6 +158,9 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     final Color sheetBg = dark
         ? const Color(0xFF121212)
         : const Color(0xFFF8F1E7);
+
+    final bool isAvailable = widget.property['isAvailable'] == true;
+    final String qrImage = (widget.property['qrImage'] ?? '').toString();
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -112,22 +172,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                Image.asset(
-                  widget.property['image'],
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      color: dark
-                          ? const Color(0xFF2A2A2A)
-                          : const Color(0xFFF3E8D7),
-                      child: const Icon(
-                        Icons.image_not_supported_outlined,
-                        size: 48,
-                        color: Color(0xFFB17B30),
-                      ),
-                    );
-                  },
-                ),
+                _propertyImage(dark),
                 Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
@@ -144,6 +189,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
               ],
             ),
           ),
+
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -171,6 +217,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
               ),
             ),
           ),
+
           DraggableScrollableSheet(
             initialChildSize: 0.63,
             minChildSize: 0.63,
@@ -201,7 +248,9 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           ),
                         ),
                       ),
+
                       const SizedBox(height: 18),
+
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -227,15 +276,6 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                                 colors: [Color(0xFFE6BC6D), Color(0xFFBE8233)],
                               ),
                               borderRadius: BorderRadius.circular(18),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(
-                                    0xFFC89243,
-                                  ).withOpacity(0.18),
-                                  blurRadius: 14,
-                                  offset: const Offset(0, 8),
-                                ),
-                              ],
                             ),
                             child: Text(
                               widget.property['price'] ?? 'RM 0',
@@ -248,7 +288,9 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           ),
                         ],
                       ),
+
                       const SizedBox(height: 14),
+
                       Row(
                         children: [
                           const Icon(
@@ -269,7 +311,9 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           ),
                         ],
                       ),
+
                       const SizedBox(height: 14),
+
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
@@ -278,11 +322,13 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                             _infoTag(context, widget.property['type']),
                           if (widget.property['stayCategory'] != null)
                             _infoTag(context, widget.property['stayCategory']),
-                          if (widget.property['postedBy'] != null)
-                            _infoTag(context, widget.property['postedBy']),
+                          if (widget.property['landlordName'] != null)
+                            _infoTag(context, widget.property['landlordName']),
                         ],
                       ),
+
                       const SizedBox(height: 24),
+
                       _sectionTitle(context, 'Description'),
                       const SizedBox(height: 10),
                       _softCard(
@@ -299,7 +345,66 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           ),
                         ),
                       ),
+
                       const SizedBox(height: 22),
+
+                      _sectionTitle(context, 'Availability'),
+                      const SizedBox(height: 10),
+                      _softCard(
+                        context: context,
+                        child: Row(
+                          children: [
+                            Icon(
+                              isAvailable
+                                  ? Icons.check_circle
+                                  : Icons.cancel_rounded,
+                              color: isAvailable ? Colors.green : Colors.red,
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              isAvailable ? 'Available' : 'Not Available',
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: primaryText,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 22),
+
+                      _sectionTitle(context, 'Payment QR'),
+                      const SizedBox(height: 10),
+                      _softCard(
+                        context: context,
+                        child: qrImage.isNotEmpty
+                            ? Image.network(
+                                qrImage,
+                                height: 220,
+                                width: double.infinity,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, __, ___) {
+                                  return const Center(
+                                    child: Text('Unable to load QR image'),
+                                  );
+                                },
+                              )
+                            : Center(
+                                child: Text(
+                                  'No QR uploaded yet',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 14,
+                                    color: secondaryText,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                      ),
+
+                      const SizedBox(height: 22),
+
                       _sectionTitle(context, 'Location'),
                       const SizedBox(height: 10),
                       _softCard(
@@ -333,7 +438,9 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           ),
                         ),
                       ),
+
                       const SizedBox(height: 28),
+
                       Row(
                         children: [
                           Expanded(
@@ -345,51 +452,11 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                                 });
                                 _openChat();
                               },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 16,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isChatSelected
-                                      ? const Color(0xFFB17B30)
-                                      : (dark
-                                            ? Colors.white.withOpacity(0.04)
-                                            : Colors.white.withOpacity(0.6)),
-                                  borderRadius: BorderRadius.circular(18),
-                                  border: Border.all(
-                                    color: isChatSelected
-                                        ? const Color(0xFFB17B30)
-                                        : (dark
-                                              ? Colors.white.withOpacity(0.12)
-                                              : const Color(
-                                                  0xFFD6B36A,
-                                                ).withOpacity(0.75)),
-                                    width: 1.2,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.chat_bubble_outline_rounded,
-                                      color: isChatSelected
-                                          ? Colors.white
-                                          : const Color(0xFFB17B30),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      'Chat',
-                                      style: GoogleFonts.inter(
-                                        fontWeight: FontWeight.w700,
-                                        color: isChatSelected
-                                            ? Colors.white
-                                            : (dark
-                                                  ? Colors.white
-                                                  : const Color(0xFF7B5E35)),
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                              child: _bottomButton(
+                                context: context,
+                                selected: isChatSelected,
+                                label: 'Chat',
+                                icon: Icons.chat_bubble_outline_rounded,
                               ),
                             ),
                           ),
@@ -397,53 +464,24 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           Expanded(
                             flex: 3,
                             child: GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  isChatSelected = false;
-                                });
-                                _openBookingSheet();
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 16,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: !isChatSelected
-                                      ? const Color(0xFFB17B30)
-                                      : (dark
-                                            ? Colors.white.withOpacity(0.04)
-                                            : Colors.white.withOpacity(0.6)),
-                                  borderRadius: BorderRadius.circular(18),
-                                  border: Border.all(
-                                    color: !isChatSelected
-                                        ? const Color(0xFFB17B30)
-                                        : (dark
-                                              ? Colors.white.withOpacity(0.12)
-                                              : const Color(
-                                                  0xFFD6B36A,
-                                                ).withOpacity(0.75)),
-                                    width: 1.2,
-                                  ),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    'Book Now',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w700,
-                                      color: !isChatSelected
-                                          ? Colors.white
-                                          : (dark
-                                                ? Colors.white
-                                                : const Color(0xFF7B5E35)),
-                                    ),
-                                  ),
-                                ),
+                              onTap: isAvailable
+                                  ? () {
+                                      setState(() {
+                                        isChatSelected = false;
+                                      });
+                                      _openBookingSheet();
+                                    }
+                                  : null,
+                              child: _bookButton(
+                                context: context,
+                                selected: !isChatSelected && isAvailable,
+                                enabled: isAvailable,
                               ),
                             ),
                           ),
                         ],
                       ),
+
                       const SizedBox(height: 12),
                     ],
                   ),
@@ -452,6 +490,79 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
             },
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _bottomButton({
+    required BuildContext context,
+    required bool selected,
+    required String label,
+    required IconData icon,
+  }) {
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      decoration: BoxDecoration(
+        color: selected
+            ? const Color(0xFFB17B30)
+            : (dark
+                  ? Colors.white.withOpacity(0.04)
+                  : Colors.white.withOpacity(0.6)),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: selected
+              ? const Color(0xFFB17B30)
+              : (dark
+                    ? Colors.white.withOpacity(0.12)
+                    : const Color(0xFFD6B36A).withOpacity(0.75)),
+          width: 1.2,
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: selected ? Colors.white : const Color(0xFFB17B30)),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontWeight: FontWeight.w700,
+              color: selected
+                  ? Colors.white
+                  : (dark ? Colors.white : const Color(0xFF7B5E35)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _bookButton({
+    required BuildContext context,
+    required bool selected,
+    required bool enabled,
+  }) {
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      decoration: BoxDecoration(
+        color: enabled ? const Color(0xFFB17B30) : Colors.grey.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Center(
+        child: Text(
+          enabled ? 'Book Now' : 'Not Available',
+          style: GoogleFonts.inter(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: enabled
+                ? Colors.white
+                : (dark ? Colors.white70 : const Color(0xFF5E4B36)),
+          ),
+        ),
       ),
     );
   }
@@ -469,11 +580,6 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
             ? Colors.black.withOpacity(0.35)
             : Colors.white.withOpacity(0.82),
         shape: BoxShape.circle,
-        border: Border.all(
-          color: dark
-              ? Colors.white.withOpacity(0.12)
-              : Colors.white.withOpacity(0.5),
-        ),
       ),
       child: IconButton(
         onPressed: onTap,
@@ -508,21 +614,6 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
             ? Colors.white.withOpacity(0.05)
             : Colors.white.withOpacity(0.78),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: dark
-              ? Colors.white.withOpacity(0.08)
-              : Colors.white.withOpacity(0.65),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: dark
-                ? Colors.black.withOpacity(0.14)
-                : const Color(0xFFC89243).withOpacity(0.08),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
       ),
       child: child,
     );

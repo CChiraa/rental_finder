@@ -1,10 +1,90 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:smart_rental_app/services/booking_service.dart';
 
 class LandlordBookingManagementScreen extends StatelessWidget {
-  final List<Map<String, dynamic>> bookings;
+  const LandlordBookingManagementScreen({super.key});
 
-  const LandlordBookingManagementScreen({super.key, required this.bookings});
+  Color _statusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'approved':
+      case 'confirmed':
+      case 'successful':
+        return Colors.green;
+      case 'rejected':
+      case 'unsuccessful':
+      case 'cancelled':
+        return Colors.redAccent;
+      default:
+        return Colors.orange;
+    }
+  }
+
+  void _viewReceipt(BuildContext context, String receiptUrl, bool dark) {
+    showDialog(
+      context: context,
+      builder: (_) {
+        return Dialog(
+          backgroundColor: dark ? const Color(0xFF1E293B) : Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Payment Receipt',
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: dark ? Colors.white : const Color(0xFF2C2621),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.network(
+                    receiptUrl,
+                    fit: BoxFit.contain,
+                    height: 360,
+                    errorBuilder: (_, __, ___) {
+                      return Container(
+                        height: 220,
+                        alignment: Alignment.center,
+                        child: Text(
+                          'Unable to load receipt image',
+                          style: GoogleFonts.inter(
+                            color: dark
+                                ? Colors.white70
+                                : const Color(0xFF7B664C),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFB17B30),
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text('Close'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,8 +112,30 @@ class LandlordBookingManagementScreen extends StatelessWidget {
         ),
         iconTheme: IconThemeData(color: primaryText),
       ),
-      body: bookings.isEmpty
-          ? Center(
+      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: BookingService().getAllBookings(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Text(
+                'Failed to load bookings.',
+                style: GoogleFonts.inter(
+                  fontSize: 15,
+                  color: secondaryText,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            );
+          }
+
+          final docs = snapshot.data?.docs ?? [];
+
+          if (docs.isEmpty) {
+            return Center(
               child: Text(
                 'No bookings yet',
                 style: GoogleFonts.inter(
@@ -42,84 +144,239 @@ class LandlordBookingManagementScreen extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(20),
-              itemCount: bookings.length,
-              itemBuilder: (context, index) {
-                final booking = bookings[index];
-                final status =
-                    (booking['bookingStatus'] ?? booking['status'] ?? 'Pending')
-                        .toString();
+            );
+          }
 
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 14),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: cardBg,
-                    borderRadius: BorderRadius.circular(20),
+          return ListView.builder(
+            padding: const EdgeInsets.all(20),
+            itemCount: docs.length,
+            itemBuilder: (context, index) {
+              final bookingId = docs[index].id;
+              final booking = docs[index].data();
+
+              final String status = (booking['status'] ?? 'Pending').toString();
+              final String receiptUrl = (booking['receiptPath'] ?? '')
+                  .toString();
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 14),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: cardBg,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: dark
+                        ? Colors.white.withOpacity(0.08)
+                        : const Color(0xFFD6B36A).withOpacity(0.25),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        booking['title'] ?? 'Property Booking',
-                        style: GoogleFonts.inter(
-                          fontSize: 14.5,
-                          fontWeight: FontWeight.w700,
-                          color: primaryText,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      booking['propertyTitle'] ?? 'Property Booking',
+                      style: GoogleFonts.inter(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w700,
+                        color: primaryText,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Tenant: ${booking['tenantName'] ?? 'Unknown Tenant'}',
+                      style: GoogleFonts.inter(
+                        fontSize: 12.8,
+                        color: secondaryText,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Check-in: ${booking['checkIn'] ?? '-'}',
+                      style: GoogleFonts.inter(
+                        fontSize: 12.8,
+                        color: secondaryText,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Check-out: ${booking['checkOut'] ?? '-'}',
+                      style: GoogleFonts.inter(
+                        fontSize: 12.8,
+                        color: secondaryText,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Guests: ${booking['guests'] ?? 1}',
+                      style: GoogleFonts.inter(
+                        fontSize: 12.8,
+                        color: secondaryText,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Payment: ${booking['paymentMethod'] ?? '-'}',
+                      style: GoogleFonts.inter(
+                        fontSize: 12.8,
+                        color: secondaryText,
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    if (receiptUrl.isNotEmpty) ...[
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.network(
+                          receiptUrl,
+                          height: 150,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) {
+                            return Container(
+                              height: 100,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: dark
+                                    ? Colors.white.withOpacity(0.05)
+                                    : const Color(0xFFF3E8D7),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Text(
+                                'Receipt preview unavailable',
+                                style: GoogleFonts.inter(
+                                  color: secondaryText,
+                                  fontSize: 12.5,
+                                ),
+                              ),
+                            );
+                          },
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Tenant: ${booking['tenantName'] ?? 'Unknown Tenant'}',
-                        style: GoogleFonts.inter(
-                          fontSize: 12.8,
-                          color: secondaryText,
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () =>
+                              _viewReceipt(context, receiptUrl, dark),
+                          icon: const Icon(Icons.receipt_long_rounded),
+                          label: const Text('View Receipt'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFFB17B30),
+                            side: const BorderSide(color: Color(0xFFB17B30)),
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Check-in: ${booking['checkIn'] ?? '-'}',
-                        style: GoogleFonts.inter(
-                          fontSize: 12.8,
-                          color: secondaryText,
+                    ] else ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: dark
+                              ? Colors.white.withOpacity(0.05)
+                              : const Color(0xFFF3E8D7),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Text(
+                          'No receipt uploaded',
+                          style: GoogleFonts.inter(
+                            fontSize: 12.5,
+                            color: secondaryText,
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Check-out: ${booking['checkOut'] ?? '-'}',
-                        style: GoogleFonts.inter(
-                          fontSize: 12.8,
-                          color: secondaryText,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      _statusBadge(status),
                     ],
-                  ),
-                );
-              },
-            ),
+
+                    const SizedBox(height: 12),
+
+                    _statusBadge(status),
+
+                    if (status.toLowerCase() == 'pending') ...[
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () async {
+                                await BookingService().approveBooking(
+                                  bookingId,
+                                );
+
+                                if (!context.mounted) return;
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Booking approved'),
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              child: Text(
+                                'Approve',
+                                style: GoogleFonts.inter(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () async {
+                                await BookingService().rejectBooking(bookingId);
+
+                                if (!context.mounted) return;
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Booking rejected'),
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.redAccent,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              child: Text(
+                                'Reject',
+                                style: GoogleFonts.inter(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            },
+          );
+        },
+      ),
     );
   }
 
   Widget _statusBadge(String status) {
-    Color color;
-
-    switch (status.toLowerCase()) {
-      case 'approved':
-      case 'confirmed':
-      case 'successful':
-        color = Colors.green;
-        break;
-      case 'rejected':
-      case 'unsuccessful':
-        color = Colors.redAccent;
-        break;
-      default:
-        color = Colors.orange;
-    }
+    final Color color = _statusColor(status);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),

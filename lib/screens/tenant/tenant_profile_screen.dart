@@ -1,9 +1,13 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:smart_rental_app/main.dart';
 import 'package:smart_rental_app/screens/welcome_screen.dart';
+import 'package:smart_rental_app/services/auth_service.dart';
+import 'package:smart_rental_app/screens/landlord/landlord_home_screen.dart';
+
 import 'p_edit_profile_screen.dart';
 import 'p_report_issue_screen.dart';
 import 'p_saved_properties_screen.dart';
@@ -103,13 +107,147 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
     }
   }
 
-  void _showLogoutDialog() {
+  Future<void> _becomeLandlord() async {
+    try {
+      final userData = await AuthService().getUserData();
+
+      if (userData == null) {
+        throw Exception('User data not found');
+      }
+
+      final List<dynamic> roles = userData['roles'] ?? [];
+      final bool alreadyLandlord = roles.contains('Landlord');
+
+      if (alreadyLandlord) {
+        final bool? confirm = await showDialog<bool>(
+          context: context,
+          builder: (_) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+            ),
+            title: const Text('Switch to Landlord?'),
+            content: const Text(
+              'You already have landlord access. Do you want to switch to Landlord mode?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Switch'),
+              ),
+            ],
+          ),
+        );
+
+        if (confirm != true) return;
+
+        await AuthService().switchRole('Landlord');
+
+        if (!mounted) return;
+
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (_) => LandlordHomeScreen(
+              userName: currentName,
+              userEmail: currentEmail,
+            ),
+          ),
+          (route) => false,
+        );
+
+        return;
+      }
+
+      final TextEditingController nricController = TextEditingController();
+
+      final bool? confirm = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          title: const Text('Become a Landlord'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Please enter your NRIC for landlord verification.'),
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: nricController,
+                keyboardType: TextInputType.number,
+                maxLength: 12,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: const InputDecoration(
+                  labelText: 'NRIC Number',
+                  hintText: '990101012345',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Continue'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirm != true) {
+        return;
+      }
+
+      final String nric = nricController.text.trim();
+
+      if (!RegExp(r'^\d{12}$').hasMatch(nric)) {
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('NRIC must be exactly 12 digits')),
+        );
+        return;
+      }
+
+      await AuthService().addLandlordRole(nric: nric);
+      await AuthService().switchRole('Landlord');
+
+      if (!mounted) return;
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (_) => LandlordHomeScreen(
+            userName: currentName,
+            userEmail: currentEmail,
+          ),
+        ),
+        (route) => false,
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to switch role: $e')));
+    }
+  }
+
+  Future<void> _showLogoutDialog() async {
     final bool dark = Theme.of(context).brightness == Brightness.dark;
     final Color dialogBg = dark ? const Color(0xFF1E293B) : Colors.white;
     final Color primaryText = dark ? Colors.white : const Color(0xFF2C2621);
     final Color secondaryText = dark ? Colors.white70 : const Color(0xFF7B664C);
 
-    showDialog(
+    final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: dialogBg,
@@ -127,21 +265,14 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(context, false),
             child: Text(
               'Cancel',
               style: GoogleFonts.inter(color: secondaryText),
             ),
           ),
           TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (_) => const WelcomeScreen()),
-                (route) => false,
-              );
-            },
+            onPressed: () => Navigator.pop(context, true),
             child: Text(
               'Logout',
               style: GoogleFonts.inter(
@@ -152,6 +283,18 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
           ),
         ],
       ),
+    );
+
+    if (confirm != true) return;
+
+    await AuthService().logout();
+
+    if (!mounted) return;
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+      (route) => false,
     );
   }
 
@@ -169,6 +312,7 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
     final Color softCardBg = dark
         ? const Color(0xFF243247).withOpacity(0.88)
         : Colors.white.withOpacity(0.72);
+
     final Gradient backgroundGradient = dark
         ? const LinearGradient(
             colors: [Color(0xFF0F172A), Color(0xFF162033), Color(0xFF1E293B)],
@@ -199,7 +343,6 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
                 dark: dark,
                 primaryText: primaryText,
                 mutedText: mutedText,
-                cardBg: cardBg,
               ),
               Expanded(
                 child: ListView(
@@ -217,6 +360,15 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
                       title: "Edit Profile",
                       subtitle: "Update your personal information",
                       onTap: _openEditProfile,
+                      cardBg: cardBg,
+                      primaryText: primaryText,
+                      secondaryText: secondaryText,
+                    ),
+                    _menuTile(
+                      icon: Icons.business_center_outlined,
+                      title: "Become a Landlord",
+                      subtitle: "List and manage rental properties",
+                      onTap: _becomeLandlord,
                       cardBg: cardBg,
                       primaryText: primaryText,
                       secondaryText: secondaryText,
@@ -336,7 +488,6 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
     required bool dark,
     required Color primaryText,
     required Color mutedText,
-    required Color cardBg,
   }) {
     return Container(
       width: double.infinity,

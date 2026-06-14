@@ -6,17 +6,23 @@ import 'package:smart_rental_app/screens/tenant/tenant_map_tab.dart';
 import 'package:smart_rental_app/screens/tenant/tenant_chat_tab.dart';
 import 'package:smart_rental_app/screens/tenant/tenant_profile_screen.dart';
 import 'package:smart_rental_app/screens/tenant/favorite_manager.dart';
+import 'package:smart_rental_app/screens/tenant/p_notification_screen.dart';
 
-class HomeScreen extends StatefulWidget {
+class TenantHomeScreen extends StatefulWidget {
   final String userName;
+  final String userEmail;
 
-  const HomeScreen({super.key, required this.userName});
+  const TenantHomeScreen({
+    super.key,
+    required this.userName,
+    required this.userEmail,
+  });
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<TenantHomeScreen> createState() => _TenantHomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _TenantHomeScreenState extends State<TenantHomeScreen> {
   int _currentIndex = 0;
   final TextEditingController searchController = TextEditingController();
 
@@ -199,11 +205,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 favoriteIds: favoriteIds,
                 onToggleFavorite: toggleFavorite,
               ),
-              TenantMapTab(properties: properties),
+              const TenantMapTab(),
               const TenantChatTab(),
               TenantProfileScreen(
                 userName: widget.userName,
-                userEmail: '${widget.userName}@gmail.com',
+                userEmail: widget.userEmail,
                 savedProperties: favoriteProperties,
                 bookingHistory: bookingHistory,
                 payments: payments,
@@ -277,30 +283,66 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 7,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.14),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.white.withOpacity(0.14)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: const [
-                        Icon(Icons.location_on, color: Colors.white, size: 16),
-                        SizedBox(width: 5),
-                        Text(
-                          'Kuala Lumpur',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 7,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.14),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.14),
                           ),
                         ),
-                      ],
-                    ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(
+                              Icons.location_on,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                            SizedBox(width: 5),
+                            Text(
+                              'Kuala Lumpur',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Spacer(),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const TenantNotificationScreen(),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.14),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.14),
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.notifications_outlined,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 18),
                   Text(

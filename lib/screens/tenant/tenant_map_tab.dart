@@ -1,13 +1,13 @@
 import 'dart:math';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:smart_rental_app/services/property_service.dart';
 
 class TenantMapTab extends StatefulWidget {
-  final List<Map<String, dynamic>> properties;
-
-  const TenantMapTab({super.key, required this.properties});
+  const TenantMapTab({super.key});
 
   @override
   State<TenantMapTab> createState() => _TenantMapTabState();
@@ -89,12 +89,14 @@ class _TenantMapTabState extends State<TenantMapTab> {
     },
   ];
 
-  List<Map<String, dynamic>> get filteredProperties {
+  List<Map<String, dynamic>> _filterProperties(
+    List<Map<String, dynamic>> properties,
+  ) {
     final query = searchQuery.trim().toLowerCase();
 
-    if (query.isEmpty) return widget.properties;
+    if (query.isEmpty) return properties;
 
-    return widget.properties.where((property) {
+    return properties.where((property) {
       final title = (property['title'] ?? '').toString().toLowerCase();
       final location = (property['location'] ?? '').toString().toLowerCase();
       final type = (property['type'] ?? '').toString().toLowerCase();
@@ -109,8 +111,8 @@ class _TenantMapTabState extends State<TenantMapTab> {
     }).toList();
   }
 
-  Set<Marker> get propertyMarkers {
-    return filteredProperties
+  Set<Marker> _propertyMarkers(List<Map<String, dynamic>> properties) {
+    return properties
         .where((property) => property['lat'] != null && property['lng'] != null)
         .map((property) {
           final int propertyId = property['id'] ?? 0;
@@ -157,7 +159,9 @@ class _TenantMapTabState extends State<TenantMapTab> {
     }).toSet();
   }
 
-  Set<Marker> get allMarkers => {...propertyMarkers, ...transportMarkers};
+  Set<Marker> _allMarkers(List<Map<String, dynamic>> properties) {
+    return {..._propertyMarkers(properties), ...transportMarkers};
+  }
 
   void moveToProperty(Map<String, dynamic> property) {
     if (property['lat'] == null || property['lng'] == null) return;
@@ -189,22 +193,22 @@ class _TenantMapTabState extends State<TenantMapTab> {
     );
   }
 
-  void _openFullScreenMap() {
+  void _openFullScreenMap(List<Map<String, dynamic>> properties) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => FullScreenMapPage(
-          markers: allMarkers,
-          initialTarget: selectedPropertyId != null
-              ? _selectedPropertyLatLng() ?? klCenter
-              : klCenter,
+          markers: _allMarkers(properties),
+          initialTarget: _selectedPropertyLatLng(properties) ?? klCenter,
         ),
       ),
     );
   }
 
-  LatLng? _selectedPropertyLatLng() {
-    final selected = widget.properties.cast<Map<String, dynamic>?>().firstWhere(
+  LatLng? _selectedPropertyLatLng(List<Map<String, dynamic>> properties) {
+    if (selectedPropertyId == null) return null;
+
+    final selected = properties.cast<Map<String, dynamic>?>().firstWhere(
       (property) => property?['id'] == selectedPropertyId,
       orElse: () => null,
     );
@@ -294,7 +298,6 @@ class _TenantMapTabState extends State<TenantMapTab> {
   @override
   Widget build(BuildContext context) {
     final bool dark = Theme.of(context).brightness == Brightness.dark;
-    final shownProperties = filteredProperties;
     final Color primaryText = Theme.of(context).colorScheme.onSurface;
     final Color secondaryText = dark ? Colors.white70 : const Color(0xFF6F5A40);
     final Color searchBg = dark
@@ -304,341 +307,363 @@ class _TenantMapTabState extends State<TenantMapTab> {
         ? Colors.black.withOpacity(0.20)
         : Colors.black.withOpacity(0.05);
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
-      child: Column(
-        children: [
-          Text(
-            'Map Search',
-            style: GoogleFonts.cormorantGaramond(
-              fontSize: 34,
-              fontWeight: FontWeight.w700,
-              color: primaryText,
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: PropertyService().getPropertiesStream(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              'Failed to load map properties',
+              style: GoogleFonts.inter(color: secondaryText),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Find rental places in Kuala Lumpur with nearby public transport.',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              color: secondaryText,
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 18),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            decoration: BoxDecoration(
-              color: searchBg,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: cardShadow,
-                  blurRadius: 14,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-              border: Border.all(
-                color: dark
-                    ? Colors.white.withOpacity(0.08)
-                    : Colors.transparent,
-              ),
-            ),
-            child: TextField(
-              controller: searchController,
-              onChanged: (value) {
-                setState(() {
-                  searchQuery = value;
-                });
-              },
-              style: TextStyle(color: dark ? Colors.white : Colors.black87),
-              decoration: InputDecoration(
-                icon: const Icon(
-                  Icons.search_rounded,
-                  color: Color(0xFFB17B30),
-                ),
-                hintText: 'Search by title or location',
-                hintStyle: GoogleFonts.inter(
-                  color: dark ? Colors.white54 : const Color(0xFF9A8B78),
-                  fontSize: 13.5,
-                ),
-                border: InputBorder.none,
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          );
+        }
+
+        final docs = snapshot.data?.docs ?? [];
+
+        final properties = docs.map((doc) {
+          final data = doc.data();
+          data['id'] = doc.id.hashCode;
+          data['docId'] = doc.id;
+          return data;
+        }).toList();
+
+        final shownProperties = _filterProperties(properties);
+        final markers = _allMarkers(shownProperties);
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+          child: Column(
             children: [
-              _legendDot(
-                const Color(0xFFE91E63),
-                'Properties',
-                labelColor: secondaryText,
+              Text(
+                'Map Search',
+                style: GoogleFonts.cormorantGaramond(
+                  fontSize: 34,
+                  fontWeight: FontWeight.w700,
+                  color: primaryText,
+                ),
               ),
-              const SizedBox(width: 16),
-              _legendDot(
-                const Color(0xFF2196F3),
-                'Public Transport',
-                labelColor: secondaryText,
+              const SizedBox(height: 8),
+              Text(
+                'Find rental places in Kuala Lumpur with nearby public transport.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  color: secondaryText,
+                  height: 1.5,
+                ),
               ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Stack(
-            children: [
+              const SizedBox(height: 18),
               Container(
-                height: 280,
-                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(28),
+                  color: searchBg,
+                  borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: dark
-                          ? Colors.black.withOpacity(0.18)
-                          : Colors.black.withOpacity(0.06),
-                      blurRadius: 16,
-                      offset: const Offset(0, 8),
+                      color: cardShadow,
+                      blurRadius: 14,
+                      offset: const Offset(0, 6),
                     ),
                   ],
+                  border: Border.all(
+                    color: dark
+                        ? Colors.white.withOpacity(0.08)
+                        : Colors.transparent,
+                  ),
                 ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(28),
-                  child: GoogleMap(
-                    initialCameraPosition: const CameraPosition(
-                      target: klCenter,
-                      zoom: 11.5,
+                child: TextField(
+                  controller: searchController,
+                  onChanged: (value) {
+                    setState(() {
+                      searchQuery = value;
+                    });
+                  },
+                  style: TextStyle(color: dark ? Colors.white : Colors.black87),
+                  decoration: InputDecoration(
+                    icon: const Icon(
+                      Icons.search_rounded,
+                      color: Color(0xFFB17B30),
                     ),
-                    myLocationButtonEnabled: false,
-                    zoomControlsEnabled: false,
-                    mapToolbarEnabled: false,
-                    markers: allMarkers,
-                    onMapCreated: (controller) {
-                      mapController = controller;
-                    },
+                    hintText: 'Search by title or location',
+                    hintStyle: GoogleFonts.inter(
+                      color: dark ? Colors.white54 : const Color(0xFF9A8B78),
+                      fontSize: 13.5,
+                    ),
+                    border: InputBorder.none,
                   ),
                 ),
               ),
-              Positioned(
-                top: 12,
-                right: 12,
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: _openFullScreenMap,
-                    borderRadius: BorderRadius.circular(16),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: dark
-                            ? Colors.black.withOpacity(0.65)
-                            : Colors.white.withOpacity(0.95),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
+              const SizedBox(height: 14),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _legendDot(
+                    const Color(0xFFE91E63),
+                    'Properties',
+                    labelColor: secondaryText,
+                  ),
+                  const SizedBox(width: 16),
+                  _legendDot(
+                    const Color(0xFF2196F3),
+                    'Public Transport',
+                    labelColor: secondaryText,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Stack(
+                children: [
+                  Container(
+                    height: 280,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(28),
+                      boxShadow: [
+                        BoxShadow(
                           color: dark
-                              ? Colors.white.withOpacity(0.10)
-                              : Colors.black.withOpacity(0.05),
+                              ? Colors.black.withOpacity(0.18)
+                              : Colors.black.withOpacity(0.06),
+                          blurRadius: 16,
+                          offset: const Offset(0, 8),
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.12),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.fullscreen_rounded,
-                            size: 18,
-                            color: Color(0xFFB17B30),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Full Screen',
-                            style: GoogleFonts.inter(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w700,
-                              color: dark
-                                  ? Colors.white
-                                  : const Color(0xFF5E4B36),
-                            ),
-                          ),
-                        ],
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(28),
+                      child: GoogleMap(
+                        initialCameraPosition: const CameraPosition(
+                          target: klCenter,
+                          zoom: 11.5,
+                        ),
+                        myLocationButtonEnabled: false,
+                        zoomControlsEnabled: false,
+                        mapToolbarEnabled: false,
+                        markers: markers,
+                        onMapCreated: (controller) {
+                          mapController = controller;
+                        },
                       ),
                     ),
                   ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          Expanded(
-            child: shownProperties.isEmpty
-                ? Center(
-                    child: Text(
-                      'No properties found.',
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        color: secondaryText,
-                        fontWeight: FontWeight.w500,
+                  Positioned(
+                    top: 12,
+                    right: 12,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => _openFullScreenMap(shownProperties),
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: dark
+                                ? Colors.black.withOpacity(0.65)
+                                : Colors.white.withOpacity(0.95),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.fullscreen_rounded,
+                                size: 18,
+                                color: Color(0xFFB17B30),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Full Screen',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: dark
+                                      ? Colors.white
+                                      : const Color(0xFF5E4B36),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
-                  )
-                : ListView.separated(
-                    itemCount: shownProperties.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      final property = shownProperties[index];
-                      final int propertyId = property['id'] ?? 0;
-                      final bool isSelected = selectedPropertyId == propertyId;
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              Expanded(
+                child: shownProperties.isEmpty
+                    ? Center(
+                        child: Text(
+                          'No properties found.',
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            color: secondaryText,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      )
+                    : ListView.separated(
+                        itemCount: shownProperties.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          final property = shownProperties[index];
+                          final int propertyId = property['id'] ?? 0;
+                          final bool isSelected =
+                              selectedPropertyId == propertyId;
 
-                      Map<String, dynamic>? nearest;
-                      if (property['lat'] != null && property['lng'] != null) {
-                        nearest = getNearestStation(
-                          (property['lat'] as num).toDouble(),
-                          (property['lng'] as num).toDouble(),
-                        );
-                      }
-
-                      return GestureDetector(
-                        onTap: () {
-                          if (selectedPropertyId == propertyId) {
-                            resetSelection();
-                            return;
+                          Map<String, dynamic>? nearest;
+                          if (property['lat'] != null &&
+                              property['lng'] != null) {
+                            nearest = getNearestStation(
+                              (property['lat'] as num).toDouble(),
+                              (property['lng'] as num).toDouble(),
+                            );
                           }
 
-                          moveToProperty(property);
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? (dark
-                                      ? const Color(0xFF2A2A2A)
-                                      : const Color(0xFFF3E8D7))
-                                : (dark
-                                      ? const Color(0xFF1E1E1E)
-                                      : Colors.white.withOpacity(0.94)),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: isSelected
-                                  ? const Color(0xFFB17B30)
-                                  : (dark
-                                        ? Colors.white.withOpacity(0.06)
-                                        : Colors.transparent),
-                              width: 1.2,
-                            ),
-                          ),
-                          child: Column(
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    width: 44,
-                                    height: 44,
-                                    decoration: BoxDecoration(
-                                      color: dark
+                          return GestureDetector(
+                            onTap: () {
+                              if (selectedPropertyId == propertyId) {
+                                resetSelection();
+                                return;
+                              }
+
+                              moveToProperty(property);
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? (dark
                                           ? const Color(0xFF2A2A2A)
-                                          : const Color(0xFFF8F1E7),
-                                      borderRadius: BorderRadius.circular(14),
-                                    ),
-                                    child: const Icon(
-                                      Icons.location_on_rounded,
-                                      color: Color(0xFFB17B30),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          property['title'] ?? '',
-                                          style: GoogleFonts.inter(
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 14,
-                                            color: primaryText,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          property['location'] ?? '',
-                                          style: GoogleFonts.inter(
-                                            fontSize: 12.5,
-                                            color: dark
-                                                ? Colors.white70
-                                                : const Color(0xFF7B664C),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    property['price'] ?? '',
-                                    style: GoogleFonts.inter(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 13,
-                                      color: const Color(0xFFB17B30),
-                                    ),
-                                  ),
-                                ],
+                                          : const Color(0xFFF3E8D7))
+                                    : (dark
+                                          ? const Color(0xFF1E1E1E)
+                                          : Colors.white.withOpacity(0.94)),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? const Color(0xFFB17B30)
+                                      : (dark
+                                            ? Colors.white.withOpacity(0.06)
+                                            : Colors.transparent),
+                                  width: 1.2,
+                                ),
                               ),
-                              if (nearest != null) ...[
-                                const SizedBox(height: 12),
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 10,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: dark
-                                        ? const Color(0xFF0F2238)
-                                        : const Color(0xFFEFF6FF),
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                  child: Row(
+                              child: Column(
+                                children: [
+                                  Row(
                                     children: [
-                                      const Icon(
-                                        Icons.train_rounded,
-                                        size: 18,
-                                        color: Color(0xFF2196F3),
+                                      Container(
+                                        width: 44,
+                                        height: 44,
+                                        decoration: BoxDecoration(
+                                          color: dark
+                                              ? const Color(0xFF2A2A2A)
+                                              : const Color(0xFFF8F1E7),
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
+                                        ),
+                                        child: const Icon(
+                                          Icons.location_on_rounded,
+                                          color: Color(0xFFB17B30),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              property['title'] ?? '',
+                                              style: GoogleFonts.inter(
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 14,
+                                                color: primaryText,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              property['location'] ?? '',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 12.5,
+                                                color: dark
+                                                    ? Colors.white70
+                                                    : const Color(0xFF7B664C),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                       const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          'Nearest transport: ${nearest['name']} (${nearest['distanceText']})',
-                                          style: GoogleFonts.inter(
-                                            fontSize: 12.5,
-                                            fontWeight: FontWeight.w600,
-                                            color: dark
-                                                ? const Color(0xFF9DB7E8)
-                                                : const Color(0xFF2B4A66),
-                                          ),
+                                      Text(
+                                        property['price'] ?? '',
+                                        style: GoogleFonts.inter(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 13,
+                                          color: const Color(0xFFB17B30),
                                         ),
                                       ),
                                     ],
                                   ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+                                  if (nearest != null) ...[
+                                    const SizedBox(height: 12),
+                                    Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 10,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: dark
+                                            ? const Color(0xFF0F2238)
+                                            : const Color(0xFFEFF6FF),
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.train_rounded,
+                                            size: 18,
+                                            color: Color(0xFF2196F3),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              'Nearest transport: ${nearest['name']} (${nearest['distanceText']})',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 12.5,
+                                                fontWeight: FontWeight.w600,
+                                                color: dark
+                                                    ? const Color(0xFF9DB7E8)
+                                                    : const Color(0xFF2B4A66),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 

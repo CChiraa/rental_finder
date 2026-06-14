@@ -37,6 +37,105 @@ class _SignUpScreenState extends State<SignUpScreen> {
     super.dispose();
   }
 
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
+  }
+
+  Future<void> _signUpWithGoogle() async {
+    try {
+      final userData = await AuthService().signInWithGoogle();
+
+      if (!mounted) return;
+
+      final String name = userData['name'] ?? 'User';
+      final String userEmail = userData['email'] ?? '';
+      final String activeRole = userData['activeRole'] ?? 'Tenant';
+
+      if (activeRole == 'Landlord') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                LandlordHomeScreen(userName: name, userEmail: userEmail),
+          ),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                TenantHomeScreen(userName: name, userEmail: userEmail),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      _showError('Google sign up failed: $e');
+    }
+  }
+
+  Future<void> _signUpUser() async {
+    if (!_formSignupKey.currentState!.validate()) return;
+
+    if (!agreePersonalData) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please agree to the terms first')),
+      );
+      return;
+    }
+
+    try {
+      final String name = nameController.text.trim();
+      final String email = emailController.text.trim();
+      final String password = passwordController.text.trim();
+      final String nric = icController.text.trim();
+
+      await AuthService().signUp(
+        name: name,
+        email: email,
+        password: password,
+        role: selectedRole,
+        nric: selectedRole == 'Landlord' ? nric : null,
+      );
+
+      if (!mounted) return;
+
+      if (selectedRole == 'Tenant') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => TenantHomeScreen(userName: name, userEmail: email),
+          ),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                LandlordHomeScreen(userName: name, userEmail: email),
+          ),
+        );
+      }
+    } catch (e) {
+      String errorMessage = "Signup failed. Please try again.";
+
+      if (e.toString().contains("email-already-in-use")) {
+        errorMessage = "This email is already registered.";
+      } else if (e.toString().contains("weak-password")) {
+        errorMessage = "Password must be at least 6 characters.";
+      } else if (e.toString().contains("invalid-email")) {
+        errorMessage = "Please enter a valid email address.";
+      } else if (e.toString().contains("network-request-failed")) {
+        errorMessage = "Check your internet connection.";
+      }
+
+      if (!mounted) return;
+      _showError(errorMessage);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool dark = Theme.of(context).brightness == Brightness.dark;
@@ -262,10 +361,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 controller: icController,
                 label: 'NRIC',
                 icon: Icons.badge_outlined,
+                keyboardType: TextInputType.number,
                 validator: (value) {
-                  if (selectedRole == 'Landlord' &&
-                      (value == null || value.trim().isEmpty)) {
+                  if (value == null || value.trim().isEmpty) {
                     return 'Please enter your NRIC';
+                  }
+                  if (!RegExp(r'^\d{12}$').hasMatch(value.trim())) {
+                    return 'NRIC must be exactly 12 digits';
                   }
                   return null;
                 },
@@ -579,70 +681,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ],
         ),
         child: ElevatedButton(
-          onPressed: () async {
-            if (!_formSignupKey.currentState!.validate()) return;
-
-            if (!agreePersonalData) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Please agree to the terms first'),
-                ),
-              );
-              return;
-            }
-
-            try {
-              final String name = nameController.text.trim();
-              final String email = emailController.text.trim();
-              final String password = passwordController.text.trim();
-
-              await AuthService().signUp(
-                name: name,
-                email: email,
-                password: password,
-                role: selectedRole,
-                nric: selectedRole == 'Landlord'
-                    ? icController.text.trim()
-                    : null,
-              );
-
-              if (!context.mounted) return;
-
-              if (selectedRole == 'Tenant') {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => HomeScreen(userName: name)),
-                );
-              } else {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        LandlordHomeScreen(userName: name, userEmail: email),
-                  ),
-                );
-              }
-            } catch (e) {
-              String errorMessage = "Signup failed. Please try again.";
-
-              if (e.toString().contains("email-already-in-use")) {
-                errorMessage = "This email is already registered.";
-              } else if (e.toString().contains("weak-password")) {
-                errorMessage = "Password must be at least 6 characters.";
-              } else if (e.toString().contains("invalid-email")) {
-                errorMessage = "Please enter a valid email address.";
-              } else if (e.toString().contains("network-request-failed")) {
-                errorMessage = "Check your internet connection.";
-              }
-
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(errorMessage),
-                  backgroundColor: Colors.red,
-                ),
-              );
-            }
-          },
+          onPressed: _signUpUser,
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.transparent,
             shadowColor: Colors.transparent,
@@ -702,7 +741,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       width: double.infinity,
       height: 56,
       child: OutlinedButton.icon(
-        onPressed: () {},
+        onPressed: _signUpWithGoogle,
         icon: Icon(
           Icons.g_mobiledata_rounded,
           size: 30,

@@ -1,8 +1,12 @@
 import 'dart:io';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:smart_rental_app/services/property_service.dart';
+import 'package:smart_rental_app/services/storage_service.dart';
+
 import 'bc_booking_screen.dart';
 import 'bc_payment_screen.dart';
 import 'bc_chat_screen.dart';
@@ -30,8 +34,9 @@ class _LandlordAddTabState extends State<LandlordAddTab> {
   final _feedFormKey = GlobalKey<FormState>();
 
   final ImagePicker _picker = ImagePicker();
+  final PropertyService _propertyService = PropertyService();
+  final StorageService _storageService = StorageService();
 
-  // Property form
   final TextEditingController titleController = TextEditingController();
   final TextEditingController houseController = TextEditingController();
   final TextEditingController lotController = TextEditingController();
@@ -52,6 +57,7 @@ class _LandlordAddTabState extends State<LandlordAddTab> {
   String selectedBedroomType = 'Private';
 
   List<XFile> propertyImages = [];
+  XFile? qrImage;
 
   final List<String> amenities = [
     'Wifi',
@@ -74,7 +80,6 @@ class _LandlordAddTabState extends State<LandlordAddTab> {
 
   final Set<String> selectedAmenities = {};
 
-  // Feed form
   final TextEditingController promoTitleController = TextEditingController();
   final TextEditingController feedCaptionController = TextEditingController();
   final TextEditingController promoDetailsController = TextEditingController();
@@ -155,6 +160,19 @@ class _LandlordAddTabState extends State<LandlordAddTab> {
     }
   }
 
+  Future<void> pickQrImage() async {
+    final XFile? image = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+    );
+
+    if (image != null) {
+      setState(() {
+        qrImage = image;
+      });
+    }
+  }
+
   Future<void> pickFeedImage() async {
     final XFile? image = await _picker.pickImage(
       source: ImageSource.gallery,
@@ -164,6 +182,99 @@ class _LandlordAddTabState extends State<LandlordAddTab> {
       setState(() {
         feedImage = image;
       });
+    }
+  }
+
+  Future<void> _saveProperty() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+
+      if (user == null) {
+        throw Exception('User not logged in');
+      }
+
+      final String fullAddress = [
+        houseController.text.trim(),
+        lotController.text.trim(),
+        floorController.text.trim(),
+        streetController.text.trim(),
+        townController.text.trim(),
+        postcodeController.text.trim(),
+        cityController.text.trim(),
+        stateController.text.trim(),
+      ].where((item) => item.isNotEmpty).join(', ');
+
+      final List<String> imagePaths = propertyImages
+          .map((image) => image.path)
+          .toList();
+
+      final List<String> imageUrls = await _storageService.uploadMultipleImages(
+        folderName: 'property_images/${user.uid}',
+        filePaths: imagePaths,
+      );
+
+      String qrImageUrl = '';
+
+      if (qrImage != null) {
+        qrImageUrl = await _storageService.uploadImage(
+          folderName: 'qr_images/${user.uid}',
+          filePath: qrImage!.path,
+        );
+      }
+
+      await _propertyService.addProperty(
+        title: titleController.text.trim(),
+        location: fullAddress,
+        price: priceController.text.trim(),
+        description: descriptionController.text.trim(),
+        type: selectedPropertyType,
+        stayCategory: selectedRentalType,
+        lat: 3.1390,
+        lng: 101.6869,
+        landlordId: user.uid,
+        landlordName: user.displayName ?? 'Landlord',
+        images: imageUrls,
+        qrImage: qrImageUrl,
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Property added successfully.')),
+      );
+
+      titleController.clear();
+      houseController.clear();
+      lotController.clear();
+      floorController.clear();
+      streetController.clear();
+      townController.clear();
+      postcodeController.clear();
+      cityController.clear();
+      stateController.clear();
+      priceController.clear();
+      guestsController.clear();
+      bedroomsController.clear();
+      toiletsController.clear();
+      descriptionController.clear();
+
+      setState(() {
+        propertyImages.clear();
+        qrImage = null;
+        selectedAmenities.clear();
+        selectedPropertyType = 'Apartment';
+        selectedRentalType = 'Short Term';
+        selectedBedroomType = 'Private';
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to save property: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -292,15 +403,6 @@ class _LandlordAddTabState extends State<LandlordAddTab> {
         color: widget.glassCard,
         borderRadius: BorderRadius.circular(28),
         border: Border.all(color: widget.glassBorder),
-        boxShadow: [
-          BoxShadow(
-            color: widget.dark
-                ? Colors.black.withOpacity(0.18)
-                : Colors.black.withOpacity(0.05),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
       ),
       child: Form(
         key: _propertyFormKey,
@@ -560,11 +662,21 @@ class _LandlordAddTabState extends State<LandlordAddTab> {
               images: propertyImages,
             ),
 
+            const SizedBox(height: 18),
+            _buildSectionMiniTitle("Payment QR", goldText),
+            const SizedBox(height: 10),
+            _buildImagePickerArea(
+              title: "Upload Payment QR",
+              subtitle: "Upload your DuitNow or bank QR image",
+              onTap: pickQrImage,
+              images: qrImage == null ? [] : [qrImage!],
+            ),
+
             const SizedBox(height: 22),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: () {
+                onPressed: () async {
                   final bool validForm =
                       _propertyFormKey.currentState?.validate() ?? false;
 
@@ -588,12 +700,17 @@ class _LandlordAddTabState extends State<LandlordAddTab> {
                     return;
                   }
 
-                  if (validForm) {
+                  if (qrImage == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text("Property listing added successfully."),
+                        content: Text("Please upload your payment QR image."),
                       ),
                     );
+                    return;
+                  }
+
+                  if (validForm) {
+                    await _saveProperty();
                   }
                 },
                 icon: const Icon(Icons.add_home_work_rounded),
@@ -626,15 +743,6 @@ class _LandlordAddTabState extends State<LandlordAddTab> {
         color: widget.glassCard,
         borderRadius: BorderRadius.circular(28),
         border: Border.all(color: widget.glassBorder),
-        boxShadow: [
-          BoxShadow(
-            color: widget.dark
-                ? Colors.black.withOpacity(0.18)
-                : Colors.black.withOpacity(0.05),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
       ),
       child: Form(
         key: _feedFormKey,
@@ -889,78 +997,19 @@ class _LandlordAddTabState extends State<LandlordAddTab> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(22),
-        gradient: LinearGradient(
-          colors: widget.dark
-              ? [
-                  const Color(0xFF1F2937).withOpacity(0.95),
-                  const Color(0xFF111827).withOpacity(0.95),
-                ]
-              : [
-                  const Color(0xFFE6BC6D).withOpacity(0.18),
-                  const Color(0xFFC9A24A).withOpacity(0.10),
-                ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        border: Border.all(
-          color: widget.dark
-              ? Colors.white.withOpacity(0.12)
-              : const Color(0xFFE6BC6D).withOpacity(0.35),
-        ),
+        color: widget.dark
+            ? const Color(0xFF1F2937).withOpacity(0.95)
+            : const Color(0xFFE6BC6D).withOpacity(0.12),
+        border: Border.all(color: widget.glassBorder),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: const Color(0xFFC9A24A).withOpacity(0.18),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Icon(
-              Icons.location_pin,
-              color: Color(0xFFC9A24A),
-              size: 28,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Pin Location Preview",
-                  style: GoogleFonts.inter(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w700,
-                    color: primaryText,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  fullAddressPreview,
-                  style: GoogleFonts.inter(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w500,
-                    color: secondaryText,
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  "Later you can connect this to Google Maps geocoding so it shows the real pinned location automatically.",
-                  style: GoogleFonts.inter(
-                    fontSize: 11.8,
-                    fontWeight: FontWeight.w500,
-                    color: widget.dark ? Colors.white60 : Colors.grey.shade700,
-                    height: 1.45,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+      child: Text(
+        fullAddressPreview,
+        style: GoogleFonts.inter(
+          fontSize: 12.5,
+          fontWeight: FontWeight.w500,
+          color: secondaryText,
+          height: 1.5,
+        ),
       ),
     );
   }
@@ -981,11 +1030,7 @@ class _LandlordAddTabState extends State<LandlordAddTab> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: widget.dark
-                    ? Colors.white.withOpacity(0.10)
-                    : const Color(0xFFD6BC91),
-              ),
+              border: Border.all(color: widget.glassBorder),
               color: widget.dark
                   ? Colors.white.withOpacity(0.03)
                   : const Color(0xFFFFFBF6),

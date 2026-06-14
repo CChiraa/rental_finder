@@ -1,10 +1,11 @@
 import 'dart:io';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
-
-import 'booking_manager.dart';
+import 'package:smart_rental_app/services/booking_service.dart';
+import 'package:smart_rental_app/services/storage_service.dart';
 
 class BookingSheet extends StatefulWidget {
   final Map<String, dynamic> property;
@@ -21,6 +22,9 @@ class _BookingSheetState extends State<BookingSheet> {
   int guests = 1;
 
   final ImagePicker _picker = ImagePicker();
+  final BookingService _bookingService = BookingService();
+  final StorageService _storageService = StorageService();
+
   String paymentMethod = 'QR Payment';
   String? receiptPath;
 
@@ -89,20 +93,39 @@ class _BookingSheetState extends State<BookingSheet> {
     return checkOutDate!.difference(checkInDate!).inDays;
   }
 
-  Future<void> _pickReceipt() async {
-    final XFile? pickedFile = await _picker.pickImage(
-      source: ImageSource.gallery,
-    );
+  Future<void> _submitBookingToFirestore() async {
+    final User? user = FirebaseAuth.instance.currentUser;
 
-    if (pickedFile != null) {
-      setState(() {
-        receiptPath = pickedFile.path;
-      });
+    if (user == null) {
+      throw Exception('User not logged in');
     }
+
+    String receiptUrl = '';
+
+    if (receiptPath != null && receiptPath!.isNotEmpty) {
+      receiptUrl = await _storageService.uploadImage(
+        folderName: 'payment_receipts/${user.uid}',
+        filePath: receiptPath!,
+      );
+    }
+
+    await _bookingService.addBooking(
+      tenantId: user.uid,
+      tenantName: user.displayName ?? user.email ?? 'Tenant',
+      propertyId: widget.property['docId'] ?? '',
+      propertyTitle: widget.property['title'] ?? 'Property',
+      landlordId: widget.property['landlordId'] ?? '',
+      checkIn: formatDate(checkInDate),
+      checkOut: formatDate(checkOutDate),
+      guests: guests,
+      paymentMethod: paymentMethod,
+      receiptPath: receiptUrl,
+    );
   }
 
   Future<void> _showPaymentSheet() async {
     final bool dark = Theme.of(context).brightness == Brightness.dark;
+    final String qrImage = (widget.property['qrImage'] ?? '').toString();
 
     await showModalBottomSheet(
       context: context,
@@ -179,19 +202,33 @@ class _BookingSheetState extends State<BookingSheet> {
                               ),
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(20),
-                                child: Image.asset(
-                                  'assets/images/qr_payment.png',
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return const Center(
-                                      child: Icon(
-                                        Icons.qr_code_2_rounded,
-                                        size: 90,
-                                        color: Color(0xFFB17B30),
+                                child: qrImage.isNotEmpty
+                                    ? Image.network(
+                                        qrImage,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) {
+                                          return const Center(
+                                            child: Icon(
+                                              Icons.qr_code_2_rounded,
+                                              size: 90,
+                                              color: Color(0xFFB17B30),
+                                            ),
+                                          );
+                                        },
+                                      )
+                                    : Image.asset(
+                                        'assets/images/qr_payment.png',
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) {
+                                          return const Center(
+                                            child: Icon(
+                                              Icons.qr_code_2_rounded,
+                                              size: 90,
+                                              color: Color(0xFFB17B30),
+                                            ),
+                                          );
+                                        },
                                       ),
-                                    );
-                                  },
-                                ),
                               ),
                             ),
                             const SizedBox(height: 14),
@@ -382,32 +419,41 @@ class _BookingSheetState extends State<BookingSheet> {
                             );
 
                             if (confirm == true) {
-                              BookingManager.addBooking(
-                                property: widget.property,
-                                checkIn: formatDate(checkInDate),
-                                checkOut: formatDate(checkOutDate),
-                                paymentMethod: paymentMethod,
-                                status: 'Pending',
-                                receiptPath: receiptPath,
-                              );
+                              try {
+                                await _submitBookingToFirestore();
 
-                              if (!mounted) return;
+                                if (!mounted) return;
 
-                              Navigator.pop(context);
-                              Navigator.pop(context, true);
+                                Navigator.pop(context);
+                                Navigator.pop(context, true);
 
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  backgroundColor: const Color(0xFFB17B30),
-                                  content: Text(
-                                    'Booking submitted successfully',
-                                    style: GoogleFonts.inter(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    backgroundColor: const Color(0xFFB17B30),
+                                    content: Text(
+                                      'Booking submitted successfully',
+                                      style: GoogleFonts.inter(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                   ),
-                                ),
-                              );
+                                );
+                              } catch (e) {
+                                if (!mounted) return;
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    backgroundColor: Colors.red,
+                                    content: Text(
+                                      'Failed to submit booking: $e',
+                                      style: GoogleFonts.inter(
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }
                             }
                           },
                           style: ElevatedButton.styleFrom(
@@ -554,30 +600,13 @@ class _BookingSheetState extends State<BookingSheet> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Guests',
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: dark
-                                ? Colors.white
-                                : const Color(0xFF2B2118),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Choose number of guests',
-                          style: GoogleFonts.inter(
-                            fontSize: 12.5,
-                            color: dark
-                                ? Colors.white70
-                                : const Color(0xFF7B664C),
-                          ),
-                        ),
-                      ],
+                    Text(
+                      'Guests',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: dark ? Colors.white : const Color(0xFF2B2118),
+                      ),
                     ),
                     Row(
                       children: [
@@ -585,9 +614,7 @@ class _BookingSheetState extends State<BookingSheet> {
                           dark: dark,
                           icon: Icons.remove_rounded,
                           onTap: () {
-                            if (guests > 1) {
-                              setState(() => guests--);
-                            }
+                            if (guests > 1) setState(() => guests--);
                           },
                         ),
                         Padding(
@@ -746,15 +773,6 @@ class _BookingSheetState extends State<BookingSheet> {
               : Colors.white.withOpacity(0.65),
           width: 1,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: dark
-                ? Colors.black.withOpacity(0.16)
-                : const Color(0xFFC89243).withOpacity(0.08),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
       ),
       child: child,
     );
