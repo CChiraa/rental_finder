@@ -12,7 +12,20 @@
           "package_name": "com.example.smart_rental_app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "147042454079-2neuht7figvhmt7782g6b55525nv73lm.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.smart_rental_app",
+            "certificate_hash": "a10ca53a37f2f5fdc26726a8e2ad80d032e9f79b"
+          }
+        },
+        {
+          "client_id": "147042454079-i40lkmpt80ecqf4uutg11n4e3udu3rq0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBsi2uJLVjHdgSgDIjTp2fDv7LUwaJ6GIo"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "147042454079-i40lkmpt80ecqf4uutg11n4e3udu3rq0.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
