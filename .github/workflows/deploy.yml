@@ -31,8 +31,8 @@ jobs:
         run: flutter pub get
 
       - name: Build Flutter web
-        run: flutter build web --release --web-renderer html --base-href "/rental_finder/"
-     
+        run: flutter build web --release --base-href "/rental_finder/"     
+      
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
