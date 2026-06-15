@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:smart_rental_app/screens/tenant/property_detail_screen.dart';
@@ -7,6 +8,7 @@ import 'package:smart_rental_app/screens/tenant/tenant_chat_tab.dart';
 import 'package:smart_rental_app/screens/tenant/tenant_profile_screen.dart';
 import 'package:smart_rental_app/screens/tenant/favorite_manager.dart';
 import 'package:smart_rental_app/screens/tenant/p_notification_screen.dart';
+import 'package:smart_rental_app/services/property_service.dart';
 
 class TenantHomeScreen extends StatefulWidget {
   final String userName;
@@ -25,65 +27,18 @@ class TenantHomeScreen extends StatefulWidget {
 class _TenantHomeScreenState extends State<TenantHomeScreen> {
   int _currentIndex = 0;
   final TextEditingController searchController = TextEditingController();
+  final PropertyService _propertyService = PropertyService();
 
   String selectedCategory = 'All';
 
   final List<String> categories = [
     'All',
-    'Short-term',
-    'Medium-term',
-    'Long-term',
+    'Short Term',
+    'Medium Term',
+    'Long Term',
     'House',
     'Apartment',
     'Condo',
-  ];
-
-  final List<Map<String, dynamic>> properties = [
-    {
-      'id': 1,
-      'title': 'Luxury Condo',
-      'location': 'KLCC, Kuala Lumpur',
-      'price': 'RM178/night',
-      'image': 'images/bed3.jpg',
-      'description':
-          'A modern luxury condominium located in the heart of Kuala Lumpur, just minutes away from KLCC. Fully furnished with high-speed WiFi, swimming pool, gym, and 24-hour security. Perfect for business travelers and couples.',
-      'lat': 3.1579,
-      'lng': 101.7123,
-      'postedBy': 'Alya Property',
-      'type': 'Condo',
-      'stayCategory': 'Short-term',
-      'time': '2h ago',
-    },
-    {
-      'id': 2,
-      'title': 'Modern Apartment',
-      'location': 'Bukit Bintang, Kuala Lumpur',
-      'price': 'RM200/night',
-      'image': 'images/bed1.jpg',
-      'description':
-          'Stylish apartment located in Bukit Bintang, surrounded by shopping malls, cafes, and nightlife. Comes with a fully equipped kitchen, balcony city view, and easy access to public transport.',
-      'lat': 3.1466,
-      'lng': 101.7113,
-      'postedBy': 'Urban Stay',
-      'type': 'Apartment',
-      'stayCategory': 'Medium-term',
-      'time': '5h ago',
-    },
-    {
-      'id': 3,
-      'title': 'Family House',
-      'location': 'Damansara, Selangor',
-      'price': 'RM350/night',
-      'image': 'images/liv1.jpg',
-      'description':
-          'Spacious landed house ideal for families. Features 3 bedrooms, large living area, private parking, and a peaceful neighborhood. Close to schools, supermarkets, and parks.',
-      'lat': 3.1490,
-      'lng': 101.6169,
-      'postedBy': 'Damansara Homes',
-      'type': 'House',
-      'stayCategory': 'Long-term',
-      'time': 'Yesterday',
-    },
   ];
 
   final List<Map<String, dynamic>> bookingHistory = [
@@ -118,7 +73,46 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
     },
   ];
 
-  List<Map<String, dynamic>> get filteredProperties {
+  List<Map<String, dynamic>> _convertPropertyDocs(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) {
+    return docs.map((doc) {
+      final data = doc.data();
+      final List images = data['images'] is List ? data['images'] as List : [];
+      final String firstImage = images.isNotEmpty
+          ? images.first.toString()
+          : '';
+
+      return {
+        'id': doc.id,
+        'propertyId': doc.id,
+        'title': data['title'] ?? 'Untitled Property',
+        'location': data['location'] ?? 'No location',
+        'price': data['price'] ?? 'RM0',
+        'image': firstImage.isNotEmpty ? firstImage : 'images/bed3.jpg',
+        'images': images.map((e) => e.toString()).toList(),
+        'description': data['description'] ?? 'No description available.',
+        'lat': (data['lat'] ?? 3.1390).toDouble(),
+        'lng': (data['lng'] ?? 101.6869).toDouble(),
+        'postedBy': data['landlordName'] ?? 'Landlord',
+        'landlordId': data['landlordId'] ?? '',
+        'landlordName': data['landlordName'] ?? 'Landlord',
+        'type': data['type'] ?? 'Apartment',
+        'stayCategory': data['stayCategory'] ?? 'Short Term',
+        'qrImage': data['qrImage'] ?? '',
+        'likesCount': data['likesCount'] ?? 0,
+        'commentsCount': data['commentsCount'] ?? 0,
+        'sharesCount': data['sharesCount'] ?? 0,
+        'isAvailable': data['isAvailable'] ?? true,
+        'createdAt': data['createdAt'],
+        'time': 'Recently',
+      };
+    }).toList();
+  }
+
+  List<Map<String, dynamic>> _filterProperties(
+    List<Map<String, dynamic>> properties,
+  ) {
     final query = searchController.text.trim().toLowerCase();
 
     return properties.where((property) {
@@ -149,13 +143,16 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
 
   Set<int> get favoriteIds {
     return FavoriteManager.favorites
-        .map<int>((property) => property['id'] as int)
+        .map<int>((property) => property['id'].toString().hashCode)
         .toSet();
   }
 
-  void toggleFavorite(int propertyId) {
+  void toggleFavorite(
+    dynamic propertyId,
+    List<Map<String, dynamic>> properties,
+  ) {
     final property = properties.firstWhere(
-      (item) => item['id'] == propertyId,
+      (item) => item['id'].toString() == propertyId.toString(),
       orElse: () => <String, dynamic>{},
     );
 
@@ -191,52 +188,56 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
             end: Alignment.bottomRight,
           );
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: Container(
-        decoration: BoxDecoration(gradient: backgroundGradient),
-        child: SafeArea(
-          child: IndexedStack(
-            index: _currentIndex,
-            children: [
-              _buildHomeTab(context),
-              TenantFeedTab(
-                properties: properties,
-                favoriteIds: favoriteIds,
-                onToggleFavorite: toggleFavorite,
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: _propertyService.getPropertiesStream(),
+      builder: (context, snapshot) {
+        final List<Map<String, dynamic>> properties = snapshot.hasData
+            ? _convertPropertyDocs(snapshot.data!.docs)
+            : [];
+
+        return Scaffold(
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          body: Container(
+            decoration: BoxDecoration(gradient: backgroundGradient),
+            child: SafeArea(
+              child: IndexedStack(
+                index: _currentIndex,
+                children: [
+                  _buildHomeTab(context, properties, snapshot.connectionState),
+                  const TenantFeedTab(),
+                  const TenantMapTab(),
+                  const TenantChatTab(),
+                  TenantProfileScreen(
+                    userName: widget.userName,
+                    userEmail: widget.userEmail,
+                    savedProperties: favoriteProperties,
+                    bookingHistory: bookingHistory,
+                    payments: payments,
+                  ),
+                ],
               ),
-              const TenantMapTab(),
-              const TenantChatTab(),
-              TenantProfileScreen(
-                userName: widget.userName,
-                userEmail: widget.userEmail,
-                savedProperties: favoriteProperties,
-                bookingHistory: bookingHistory,
-                payments: payments,
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
-      bottomNavigationBar: _buildBottomNav(context, dark),
+          bottomNavigationBar: _buildBottomNav(context, dark),
+        );
+      },
     );
   }
 
-  Widget _buildHomeTab(BuildContext context) {
+  Widget _buildHomeTab(
+    BuildContext context,
+    List<Map<String, dynamic>> properties,
+    ConnectionState connectionState,
+  ) {
     final bool dark = Theme.of(context).brightness == Brightness.dark;
-    final shownProperties = filteredProperties;
+    final shownProperties = _filterProperties(properties);
 
     final Color primaryText = dark ? Colors.white : const Color(0xFF2C2621);
     final Color secondaryText = dark ? Colors.white70 : const Color(0xFF7B664C);
-    final Color mutedText = dark ? Colors.white60 : const Color(0xFF8B7355);
 
     final Color glassCard = dark
         ? const Color(0xFF1E293B).withOpacity(0.88)
         : Colors.white.withOpacity(0.88);
-
-    final Color softCard = dark
-        ? const Color(0xFF243247).withOpacity(0.9)
-        : const Color(0xFFF8F1E7).withOpacity(0.95);
 
     return Column(
       children: [
@@ -297,9 +298,9 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
                             color: Colors.white.withOpacity(0.14),
                           ),
                         ),
-                        child: Row(
+                        child: const Row(
                           mainAxisSize: MainAxisSize.min,
-                          children: const [
+                          children: [
                             Icon(
                               Icons.location_on,
                               color: Colors.white,
@@ -443,17 +444,6 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
                                       ? Colors.white.withOpacity(0.08)
                                       : Colors.white.withOpacity(0.55)),
                           ),
-                          boxShadow: isSelected
-                              ? [
-                                  BoxShadow(
-                                    color: const Color(
-                                      0xFFD6B36A,
-                                    ).withOpacity(0.18),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ]
-                              : [],
                         ),
                         child: Center(
                           child: Text(
@@ -504,15 +494,6 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
                               ? Colors.white.withOpacity(0.08)
                               : Colors.white.withOpacity(0.35),
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            blurRadius: 14,
-                            offset: const Offset(0, 6),
-                            color: dark
-                                ? Colors.black.withOpacity(0.20)
-                                : const Color(0xFFD6B36A).withOpacity(0.14),
-                          ),
-                        ],
                       ),
                       child: Icon(
                         favoriteProperties.isNotEmpty
@@ -527,7 +508,14 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
                 ],
               ),
               const SizedBox(height: 15),
-              if (shownProperties.isEmpty)
+              if (connectionState == ConnectionState.waiting)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: CircularProgressIndicator(),
+                  ),
+                )
+              else if (shownProperties.isEmpty)
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -542,10 +530,11 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
+                )
+              else
+                ...shownProperties.map(
+                  (property) => _propertyCard(context, property, properties),
                 ),
-              ...shownProperties.map(
-                (property) => _propertyCard(context, property),
-              ),
               const SizedBox(height: 8),
               Text(
                 'Discover new places',
@@ -558,15 +547,25 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
               const SizedBox(height: 15),
               SizedBox(
                 height: 185,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: shownProperties.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 14),
-                  itemBuilder: (context, index) {
-                    final property = shownProperties[index];
-                    return _discoverCard(context, property);
-                  },
-                ),
+                child: shownProperties.isEmpty
+                    ? Center(
+                        child: Text(
+                          'No places to discover yet.',
+                          style: GoogleFonts.inter(
+                            color: secondaryText,
+                            fontSize: 13,
+                          ),
+                        ),
+                      )
+                    : ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: shownProperties.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 14),
+                        itemBuilder: (context, index) {
+                          final property = shownProperties[index];
+                          return _discoverCard(context, property, properties);
+                        },
+                      ),
               ),
               const SizedBox(height: 24),
             ],
@@ -642,7 +641,51 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
     );
   }
 
-  Widget _propertyCard(BuildContext context, Map<String, dynamic> property) {
+  Widget _propertyImage(
+    String imagePath, {
+    required double height,
+    required double width,
+    required bool dark,
+  }) {
+    if (imagePath.startsWith('http')) {
+      return Image.network(
+        imagePath,
+        height: height,
+        width: width,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) =>
+            _imageFallback(height, width, dark),
+      );
+    }
+
+    return Image.asset(
+      imagePath,
+      height: height,
+      width: width,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) =>
+          _imageFallback(height, width, dark),
+    );
+  }
+
+  Widget _imageFallback(double height, double width, bool dark) {
+    return Container(
+      height: height,
+      width: width,
+      color: dark ? const Color(0xFF243247) : const Color(0xFFF3E8D7),
+      child: const Icon(
+        Icons.image_not_supported_outlined,
+        size: 40,
+        color: Color(0xFFB8964F),
+      ),
+    );
+  }
+
+  Widget _propertyCard(
+    BuildContext context,
+    Map<String, dynamic> property,
+    List<Map<String, dynamic>> properties,
+  ) {
     final bool dark = Theme.of(context).brightness == Brightness.dark;
     final bool favorite = isFavorite(property);
 
@@ -690,25 +733,11 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(22),
                   ),
-                  child: Image.asset(
-                    property['image'],
+                  child: _propertyImage(
+                    property['image'].toString(),
                     height: 160,
                     width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        height: 160,
-                        width: double.infinity,
-                        color: dark
-                            ? const Color(0xFF243247)
-                            : const Color(0xFFF3E8D7),
-                        child: const Icon(
-                          Icons.image_not_supported_outlined,
-                          size: 40,
-                          color: Color(0xFFB8964F),
-                        ),
-                      );
-                    },
+                    dark: dark,
                   ),
                 ),
                 Positioned(
@@ -716,7 +745,7 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
                   right: 12,
                   child: GestureDetector(
                     onTap: () {
-                      toggleFavorite(property['id']);
+                      toggleFavorite(property['id'], properties);
                     },
                     child: Container(
                       padding: const EdgeInsets.all(8),
@@ -750,7 +779,7 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          property['title'],
+                          property['title'].toString(),
                           style: GoogleFonts.inter(
                             fontWeight: FontWeight.w700,
                             fontSize: 15.5,
@@ -768,7 +797,7 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
                             const SizedBox(width: 4),
                             Expanded(
                               child: Text(
-                                property['location'],
+                                property['location'].toString(),
                                 style: GoogleFonts.inter(
                                   fontSize: 13,
                                   color: secondaryText,
@@ -782,8 +811,11 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
                           spacing: 8,
                           runSpacing: 8,
                           children: [
-                            _smallTag(context, property['type']),
-                            _smallTag(context, property['stayCategory']),
+                            _smallTag(context, property['type'].toString()),
+                            _smallTag(
+                              context,
+                              property['stayCategory'].toString(),
+                            ),
                           ],
                         ),
                       ],
@@ -791,7 +823,7 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
                   ),
                   const SizedBox(width: 12),
                   Text(
-                    property['price'],
+                    property['price'].toString(),
                     style: GoogleFonts.inter(
                       fontWeight: FontWeight.w700,
                       fontSize: 14,
@@ -807,7 +839,11 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
     );
   }
 
-  Widget _discoverCard(BuildContext context, Map<String, dynamic> property) {
+  Widget _discoverCard(
+    BuildContext context,
+    Map<String, dynamic> property,
+    List<Map<String, dynamic>> properties,
+  ) {
     final bool dark = Theme.of(context).brightness == Brightness.dark;
     final bool favorite = isFavorite(property);
 
@@ -826,25 +862,11 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(20),
-              child: Image.asset(
-                property['image'],
+              child: _propertyImage(
+                property['image'].toString(),
                 width: 160,
                 height: 185,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    width: 160,
-                    height: 185,
-                    color: dark
-                        ? const Color(0xFF243247)
-                        : const Color(0xFFF3E8D7),
-                    child: const Icon(
-                      Icons.image_not_supported_outlined,
-                      size: 40,
-                      color: Color(0xFFB8964F),
-                    ),
-                  );
-                },
+                dark: dark,
               ),
             ),
             Container(
@@ -867,7 +889,7 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
               right: 10,
               child: GestureDetector(
                 onTap: () {
-                  toggleFavorite(property['id']);
+                  toggleFavorite(property['id'], properties);
                 },
                 child: Container(
                   padding: const EdgeInsets.all(8),
@@ -895,7 +917,7 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    property['title'],
+                    property['title'].toString(),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.inter(
@@ -906,7 +928,7 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    property['location'],
+                    property['location'].toString(),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.inter(
@@ -991,36 +1013,22 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
                               contentPadding: const EdgeInsets.all(10),
                               leading: ClipRRect(
                                 borderRadius: BorderRadius.circular(12),
-                                child: Image.asset(
-                                  property['image'],
+                                child: _propertyImage(
+                                  property['image'].toString(),
                                   width: 60,
                                   height: 60,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Container(
-                                      width: 60,
-                                      height: 60,
-                                      color: dark
-                                          ? const Color(0xFF243247)
-                                          : const Color(0xFFF3E8D7),
-                                      child: const Icon(
-                                        Icons.image_not_supported_outlined,
-                                        size: 24,
-                                        color: Color(0xFFB8964F),
-                                      ),
-                                    );
-                                  },
+                                  dark: dark,
                                 ),
                               ),
                               title: Text(
-                                property['title'],
+                                property['title'].toString(),
                                 style: GoogleFonts.inter(
                                   fontWeight: FontWeight.w700,
                                   color: primaryText,
                                 ),
                               ),
                               subtitle: Text(
-                                property['location'],
+                                property['location'].toString(),
                                 style: GoogleFonts.inter(
                                   fontSize: 12.5,
                                   color: secondaryText,

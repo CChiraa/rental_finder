@@ -1,5 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:smart_rental_app/services/booking_service.dart';
+import 'package:smart_rental_app/services/chat_service.dart';
+import 'package:smart_rental_app/services/property_service.dart';
 
 class LandlordHomeTab extends StatelessWidget {
   final String userName;
@@ -31,22 +36,25 @@ class LandlordHomeTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      return const Center(child: Text('Please sign in again.'));
+    }
+
+    final landlordId = user.uid;
+
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(22, 18, 22, 120),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _HeroCard(
-            userName: userName,
-            dark: dark,
-            glassBorder: glassBorder,
-            accentBlue: accentBlue,
-          ),
+          _buildHeroWithCounts(landlordId),
           const SizedBox(height: 18),
           _buildInsightBanner(),
           const SizedBox(height: 22),
-          _buildOverviewContainer(),
+          _buildOverviewContainer(landlordId),
           const SizedBox(height: 24),
           _buildSectionTitle(
             title: "Quick Actions",
@@ -110,26 +118,33 @@ class LandlordHomeTab extends StatelessWidget {
             dark: dark,
           ),
           const SizedBox(height: 14),
-          _propertyItem(
-            title: "Condo near KLCC",
-            price: "RM178 / night",
-            location: "Kuala Lumpur",
-            status: "Available",
-          ),
-          _propertyItem(
-            title: "Studio Apartment",
-            price: "RM120 / night",
-            location: "Petaling Jaya",
-            status: "Booked",
-          ),
-          _propertyItem(
-            title: "Cozy Family House",
-            price: "RM250 / night",
-            location: "Shah Alam",
-            status: "Pending",
-          ),
+          _buildFirestoreListings(landlordId),
         ],
       ),
+    );
+  }
+
+  Widget _buildHeroWithCounts(String landlordId) {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: PropertyService().getLandlordPropertiesStream(landlordId),
+      builder: (context, propertySnapshot) {
+        final propertyDocs = propertySnapshot.data?.docs ?? [];
+        final listingsCount = propertyDocs.length;
+
+        final bookedCount = propertyDocs.where((doc) {
+          final data = doc.data();
+          return data['isAvailable'] == false;
+        }).length;
+
+        return _HeroCard(
+          userName: userName,
+          dark: dark,
+          glassBorder: glassBorder,
+          accentBlue: accentBlue,
+          listingsCount: listingsCount,
+          bookedCount: bookedCount,
+        );
+      },
     );
   }
 
@@ -170,98 +185,173 @@ class LandlordHomeTab extends StatelessWidget {
     );
   }
 
-  Widget _buildOverviewContainer() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: dark
-            ? Colors.white.withOpacity(0.05)
-            : Colors.white.withOpacity(0.52),
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(
-          color: dark
-              ? Colors.white.withOpacity(0.10)
-              : const Color(0xFFD6BC91).withOpacity(0.8),
-          width: 1.2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: dark
-                ? Colors.black.withOpacity(0.18)
-                : const Color(0xFFD8AF5B).withOpacity(0.08),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionTitle(
-            title: "Overview",
-            primaryText: primaryText,
-            dark: dark,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            "Dashboard summary",
-            style: GoogleFonts.inter(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w600,
-              color: secondaryText,
+  Widget _buildOverviewContainer(String landlordId) {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: PropertyService().getLandlordPropertiesStream(landlordId),
+      builder: (context, propertySnapshot) {
+        return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: BookingService().getLandlordBookings(landlordId),
+          builder: (context, bookingSnapshot) {
+            return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: ChatService().getLandlordChats(landlordId),
+              builder: (context, chatSnapshot) {
+                final propertyDocs = propertySnapshot.data?.docs ?? [];
+                final bookingDocs = bookingSnapshot.data?.docs ?? [];
+                final chatDocs = chatSnapshot.data?.docs ?? [];
+
+                final pendingCount = bookingDocs.where((doc) {
+                  final status = (doc.data()['status'] ?? '').toString();
+                  return status.toLowerCase() == 'pending';
+                }).length;
+
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: dark
+                        ? Colors.white.withOpacity(0.05)
+                        : Colors.white.withOpacity(0.52),
+                    borderRadius: BorderRadius.circular(26),
+                    border: Border.all(
+                      color: dark
+                          ? Colors.white.withOpacity(0.10)
+                          : const Color(0xFFD6BC91).withOpacity(0.8),
+                      width: 1.2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: dark
+                            ? Colors.black.withOpacity(0.18)
+                            : const Color(0xFFD8AF5B).withOpacity(0.08),
+                        blurRadius: 14,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildSectionTitle(
+                        title: "Overview",
+                        primaryText: primaryText,
+                        dark: dark,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        "Dashboard summary",
+                        style: GoogleFonts.inter(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: secondaryText,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _SummaryCard(
+                              title: "Properties",
+                              value: propertyDocs.length.toString(),
+                              icon: Icons.home_work_rounded,
+                              color: accentBlue,
+                              dark: dark,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _SummaryCard(
+                              title: "Bookings",
+                              value: bookingDocs.length.toString(),
+                              icon: Icons.book_online_rounded,
+                              color: const Color(0xFF00A86B),
+                              dark: dark,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _SummaryCard(
+                              title: "Pending",
+                              value: pendingCount.toString(),
+                              icon: Icons.hourglass_top_rounded,
+                              color: const Color(0xFFFF9800),
+                              dark: dark,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _SummaryCard(
+                              title: "Chats",
+                              value: chatDocs.length.toString(),
+                              icon: Icons.chat_bubble_outline_rounded,
+                              color: const Color(0xFFE53935),
+                              dark: dark,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildFirestoreListings(String landlordId) {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: PropertyService().getLandlordPropertiesStream(landlordId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 20),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        final docs = snapshot.data?.docs ?? [];
+
+        if (docs.isEmpty) {
+          return Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: glassCard,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: glassBorder),
             ),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _SummaryCard(
-                  title: "Properties",
-                  value: "12",
-                  icon: Icons.home_work_rounded,
-                  color: accentBlue,
-                  dark: dark,
-                ),
+            child: Text(
+              'No listings yet. Add your first property.',
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                color: secondaryText,
+                fontWeight: FontWeight.w600,
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _SummaryCard(
-                  title: "Bookings",
-                  value: "8",
-                  icon: Icons.book_online_rounded,
-                  color: const Color(0xFF00A86B),
-                  dark: dark,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _SummaryCard(
-                  title: "Pending",
-                  value: "4",
-                  icon: Icons.hourglass_top_rounded,
-                  color: const Color(0xFFFF9800),
-                  dark: dark,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _SummaryCard(
-                  title: "Chats",
-                  value: "6",
-                  icon: Icons.chat_bubble_outline_rounded,
-                  color: const Color(0xFFE53935),
-                  dark: dark,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+            ),
+          );
+        }
+
+        return Column(
+          children: docs.take(5).map((doc) {
+            final property = doc.data();
+
+            final bool isAvailable = property['isAvailable'] ?? true;
+
+            return _propertyItem(
+              title: property['title'] ?? 'Property',
+              price: property['price'] ?? '',
+              location: property['location'] ?? '',
+              status: isAvailable ? 'Available' : 'Booked',
+            );
+          }).toList(),
+        );
+      },
     );
   }
 
@@ -376,12 +466,12 @@ class LandlordHomeTab extends StatelessWidget {
     Color statusColor;
     Color statusBg;
 
-    switch (status) {
-      case "Available":
+    switch (status.toLowerCase()) {
+      case "available":
         statusColor = Colors.green;
         statusBg = Colors.green.withOpacity(0.12);
         break;
-      case "Booked":
+      case "booked":
         statusColor = Colors.orange;
         statusBg = Colors.orange.withOpacity(0.12);
         break;
@@ -498,12 +588,16 @@ class _HeroCard extends StatelessWidget {
   final bool dark;
   final Color glassBorder;
   final Color accentBlue;
+  final int listingsCount;
+  final int bookedCount;
 
   const _HeroCard({
     required this.userName,
     required this.dark,
     required this.glassBorder,
     required this.accentBlue,
+    required this.listingsCount,
+    required this.bookedCount,
   });
 
   @override
@@ -622,14 +716,14 @@ class _HeroCard extends StatelessWidget {
                 Expanded(
                   child: _heroMiniChip(
                     icon: Icons.home_work_outlined,
-                    label: '12 listings',
+                    label: '$listingsCount listings',
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: _heroMiniChip(
                     icon: Icons.calendar_month_outlined,
-                    label: '5 booked dates',
+                    label: '$bookedCount booked',
                   ),
                 ),
               ],
@@ -644,19 +738,10 @@ class _HeroCard extends StatelessWidget {
                     const Color(0xFFE6BC6D).withOpacity(0.25),
                     const Color(0xFFC9A24A).withOpacity(0.18),
                   ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
                 ),
                 border: Border.all(
                   color: const Color(0xFFE6BC6D).withOpacity(0.40),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFE6BC6D).withOpacity(0.15),
-                    blurRadius: 14,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
               ),
               child: Row(
                 children: [
@@ -672,7 +757,7 @@ class _HeroCard extends StatelessWidget {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Your property engagement is improving this week.',
+                      'Your dashboard is now connected to Firestore.',
                       style: GoogleFonts.inter(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
@@ -700,13 +785,6 @@ class _HeroCard extends StatelessWidget {
         color: Colors.black.withOpacity(0.28),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withOpacity(0.22)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.18),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: Row(
         children: [

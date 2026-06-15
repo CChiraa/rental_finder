@@ -86,6 +86,58 @@ class LandlordBookingManagementScreen extends StatelessWidget {
     );
   }
 
+  Future<void> _showRejectReasonDialog(
+    BuildContext context,
+    String bookingId,
+  ) async {
+    final TextEditingController reasonController = TextEditingController();
+
+    final String? reason = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Reject Booking'),
+          content: TextField(
+            controller: reasonController,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              hintText: 'Enter rejection reason',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context, reasonController.text.trim());
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Reject'),
+            ),
+          ],
+        );
+      },
+    );
+
+    reasonController.dispose();
+
+    if (reason == null || reason.isEmpty) return;
+
+    await BookingService().rejectBooking(bookingId, rejectionReason: reason);
+
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Booking rejected')));
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool dark = Theme.of(context).brightness == Brightness.dark;
@@ -157,6 +209,8 @@ class LandlordBookingManagementScreen extends StatelessWidget {
               final String status = (booking['status'] ?? 'Pending').toString();
               final String receiptUrl = (booking['receiptPath'] ?? '')
                   .toString();
+              final String rejectionReason = (booking['rejectionReason'] ?? '')
+                  .toString();
 
               return Container(
                 margin: const EdgeInsets.only(bottom: 14),
@@ -221,6 +275,19 @@ class LandlordBookingManagementScreen extends StatelessWidget {
                         color: secondaryText,
                       ),
                     ),
+
+                    if (status.toLowerCase() == 'rejected' &&
+                        rejectionReason.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        'Reason: $rejectionReason',
+                        style: GoogleFonts.inter(
+                          fontSize: 12.8,
+                          color: Colors.redAccent,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
 
                     const SizedBox(height: 12),
 
@@ -332,16 +399,8 @@ class LandlordBookingManagementScreen extends StatelessWidget {
                           const SizedBox(width: 10),
                           Expanded(
                             child: ElevatedButton(
-                              onPressed: () async {
-                                await BookingService().rejectBooking(bookingId);
-
-                                if (!context.mounted) return;
-
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Booking rejected'),
-                                  ),
-                                );
+                              onPressed: () {
+                                _showRejectReasonDialog(context, bookingId);
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.redAccent,

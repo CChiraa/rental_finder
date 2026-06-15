@@ -1,21 +1,129 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:smart_rental_app/services/property_service.dart';
 
 class TenantFeedTab extends StatelessWidget {
   final List<Map<String, dynamic>> properties;
   final Set<int> favoriteIds;
-  final Function(int) onToggleFavorite;
+  final Function(int)? onToggleFavorite;
 
   const TenantFeedTab({
     super.key,
-    required this.properties,
-    required this.favoriteIds,
-    required this.onToggleFavorite,
+    this.properties = const [],
+    this.favoriteIds = const <int>{},
+    this.onToggleFavorite,
   });
 
-  bool isFavorite(int propertyId) => favoriteIds.contains(propertyId);
+  Future<void> _toggleLike(String feedId, bool isLiked) async {
+    await FirebaseFirestore.instance.collection('feeds').doc(feedId).update({
+      'likesCount': FieldValue.increment(isLiked ? -1 : 1),
+    });
+  }
+
+  Future<void> _incrementComments(String feedId) async {
+    await FirebaseFirestore.instance.collection('feeds').doc(feedId).update({
+      'commentsCount': FieldValue.increment(1),
+    });
+  }
+
+  Future<void> _showCommentDialog(BuildContext context, String feedId) async {
+    final TextEditingController commentController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 16,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+          ),
+          child: SizedBox(
+            height: 500,
+            child: Column(
+              children: [
+                Text(
+                  'Comments',
+                  style: GoogleFonts.inter(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                    stream: FirebaseFirestore.instance
+                        .collection('feeds')
+                        .doc(feedId)
+                        .collection('comments')
+                        .orderBy('createdAt', descending: true)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      final docs = snapshot.data?.docs ?? [];
+
+                      if (docs.isEmpty) {
+                        return const Center(child: Text('No comments yet'));
+                      }
+
+                      return ListView.builder(
+                        itemCount: docs.length,
+                        itemBuilder: (context, index) {
+                          final comment = docs[index].data();
+
+                          return ListTile(
+                            leading: const CircleAvatar(
+                              child: Icon(Icons.person),
+                            ),
+                            title: Text(comment['comment'] ?? ''),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+                const Divider(),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: commentController,
+                        decoration: const InputDecoration(
+                          hintText: 'Write a comment...',
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.send),
+                      onPressed: () async {
+                        final text = commentController.text.trim();
+                        if (text.isEmpty) return;
+
+                        await FirebaseFirestore.instance
+                            .collection('feeds')
+                            .doc(feedId)
+                            .collection('comments')
+                            .add({
+                              'comment': text,
+                              'createdAt': FieldValue.serverTimestamp(),
+                            });
+
+                        await _incrementComments(feedId);
+                        commentController.clear();
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    ).whenComplete(() {
+      commentController.dispose();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +147,10 @@ class TenantFeedTab extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(gradient: backgroundGradient),
       child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: PropertyService().getPropertiesStream(),
+        stream: FirebaseFirestore.instance
+            .collection('feeds')
+            .orderBy('createdAt', descending: true)
+            .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -48,7 +159,7 @@ class TenantFeedTab extends StatelessWidget {
           if (snapshot.hasError) {
             return Center(
               child: Text(
-                'Failed to load properties',
+                'Failed to load feed posts',
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   color: secondaryText,
@@ -59,19 +170,6 @@ class TenantFeedTab extends StatelessWidget {
           }
 
           final docs = snapshot.data?.docs ?? [];
-
-          if (docs.isEmpty) {
-            return Center(
-              child: Text(
-                "No property posts available yet",
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  color: secondaryText,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            );
-          }
 
           return ListView(
             padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
@@ -86,18 +184,31 @@ class TenantFeedTab extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                'Latest property posts from landlords',
+                'Latest posts from landlords',
                 style: GoogleFonts.inter(fontSize: 14, color: secondaryText),
               ),
-              const SizedBox(height: 18),
-              ...docs.map((doc) {
-                final Map<String, dynamic> property = doc.data();
+              const SizedBox(height: 22),
 
-                property['id'] = doc.id.hashCode;
-                property['docId'] = doc.id;
-
-                return _buildFeedCard(context, property);
-              }),
+              if (docs.isEmpty)
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 80),
+                    child: Text(
+                      'No feed posts available yet',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        color: secondaryText,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                ...docs.map((doc) {
+                  final feed = doc.data();
+                  feed['docId'] = doc.id;
+                  return _buildFeedCard(context, feed);
+                }),
             ],
           );
         },
@@ -105,11 +216,15 @@ class TenantFeedTab extends StatelessWidget {
     );
   }
 
-  Widget _buildFeedCard(BuildContext context, Map<String, dynamic> property) {
+  Widget _buildFeedCard(BuildContext context, Map<String, dynamic> feed) {
     final bool dark = Theme.of(context).brightness == Brightness.dark;
 
-    final int propertyId = property['id'] ?? 0;
-    final bool favorite = isFavorite(propertyId);
+    final String feedId = feed['docId'].toString();
+    final int feedHashId = feedId.hashCode;
+    final bool liked = favoriteIds.contains(feedHashId);
+
+    final int likesCount = feed['likesCount'] ?? 0;
+    final int commentsCount = feed['commentsCount'] ?? 0;
 
     final Color primaryText = dark ? Colors.white : const Color(0xFF2C2621);
     final Color secondaryText = dark ? Colors.white70 : const Color(0xFF7B664C);
@@ -123,18 +238,11 @@ class TenantFeedTab extends StatelessWidget {
         ? const Color(0xFF243247).withOpacity(0.9)
         : const Color(0xFFF8F1E7).withOpacity(0.95);
 
-    final Color tagBg = dark
-        ? const Color(0xFFD6B36A).withOpacity(0.14)
-        : const Color(0xFFF3E8D7);
-
     final Color dividerColor = dark
         ? Colors.white.withOpacity(0.08)
         : Colors.black.withOpacity(0.08);
 
-    final Color goldColor = const Color(0xFFB8964F);
-
-    final List images = property['images'] ?? [];
-    final String imageUrl = images.isNotEmpty ? images.first.toString() : '';
+    final String imageUrl = (feed['imageUrl'] ?? '').toString();
 
     return Container(
       margin: const EdgeInsets.only(bottom: 18),
@@ -146,15 +254,6 @@ class TenantFeedTab extends StatelessWidget {
               ? const Color(0xFFD6B36A).withOpacity(0.08)
               : Colors.white.withOpacity(0.35),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: dark
-                ? Colors.black.withOpacity(0.24)
-                : const Color(0xFFD6B36A).withOpacity(0.14),
-            blurRadius: 22,
-            offset: const Offset(0, 10),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -170,60 +269,19 @@ class TenantFeedTab extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Container(
-                  width: 46,
-                  height: 46,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: dark
-                        ? const Color(0xFF243247)
-                        : Colors.white.withOpacity(0.9),
-                    border: Border.all(
-                      color: const Color(0xFFD6B36A),
-                      width: 1.4,
-                    ),
-                  ),
-                  child: const Icon(
-                    Icons.home_work_rounded,
-                    color: Color(0xFFB8964F),
-                    size: 24,
-                  ),
+                const CircleAvatar(
+                  backgroundColor: Color(0xFFF3E8D7),
+                  child: Icon(Icons.person, color: Color(0xFFB8964F)),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        property['landlordName'] ?? 'Landlord Post',
-                        style: GoogleFonts.inter(
-                          fontSize: 14.5,
-                          fontWeight: FontWeight.w700,
-                          color: primaryText,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          Text(
-                            'Just now',
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              color: mutedText,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Icon(Icons.public, size: 14, color: mutedText),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => onToggleFavorite(propertyId),
-                  icon: Icon(
-                    favorite ? Icons.favorite : Icons.favorite_border_rounded,
-                    color: favorite ? Colors.redAccent : goldColor,
+                  child: Text(
+                    feed['landlordName'] ?? 'Landlord',
+                    style: GoogleFonts.inter(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w700,
+                      color: primaryText,
+                    ),
                   ),
                 ),
               ],
@@ -236,55 +294,33 @@ class TenantFeedTab extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '🏡 ${property['title'] ?? 'Property'} now available at ${property['location'] ?? 'Unknown location'}',
+                  feed['title'] ?? 'Feed Post',
                   style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
                     color: primaryText,
-                    height: 1.5,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  property['description'] ?? '',
+                  feed['caption'] ?? '',
                   style: GoogleFonts.inter(
-                    fontSize: 13,
+                    fontSize: 13.5,
                     color: secondaryText,
                     height: 1.5,
                   ),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _smallTag(
-                      text: property['type'] ?? '',
-                      bgColor: tagBg,
-                      textColor: dark
-                          ? const Color(0xFFEAD8BE)
-                          : const Color(0xFF8E6A39),
+                if ((feed['propertyName'] ?? '').toString().isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Property: ${feed['propertyName']}',
+                    style: GoogleFonts.inter(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFFB8964F),
                     ),
-                    _smallTag(
-                      text: property['stayCategory'] ?? '',
-                      bgColor: tagBg,
-                      textColor: dark
-                          ? const Color(0xFFEAD8BE)
-                          : const Color(0xFF8E6A39),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  property['price'] ?? '',
-                  style: GoogleFonts.inter(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: goldColor,
                   ),
-                ),
+                ],
               ],
             ),
           ),
@@ -308,12 +344,12 @@ class TenantFeedTab extends StatelessWidget {
             child: Row(
               children: [
                 Text(
-                  '${favorite ? 25 : 24} interested',
+                  '$likesCount likes',
                   style: GoogleFonts.inter(fontSize: 12.5, color: mutedText),
                 ),
                 const Spacer(),
                 Text(
-                  '8 comments',
+                  '$commentsCount comments',
                   style: GoogleFonts.inter(fontSize: 12.5, color: mutedText),
                 ),
               ],
@@ -328,23 +364,18 @@ class TenantFeedTab extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _feedAction(
-                  icon: favorite
-                      ? Icons.favorite
-                      : Icons.favorite_border_rounded,
-                  label: 'Interested',
-                  onTap: () => onToggleFavorite(propertyId),
-                  color: favorite ? Colors.redAccent : mutedText,
+                  icon: liked ? Icons.favorite : Icons.favorite_border_rounded,
+                  label: 'Like',
+                  onTap: () async {
+                    onToggleFavorite?.call(feedHashId);
+                    await _toggleLike(feedId, liked);
+                  },
+                  color: liked ? Colors.redAccent : mutedText,
                 ),
                 _feedAction(
                   icon: Icons.chat_bubble_outline_rounded,
                   label: 'Comment',
-                  onTap: () {},
-                  color: mutedText,
-                ),
-                _feedAction(
-                  icon: Icons.send_outlined,
-                  label: 'Share',
-                  onTap: () {},
+                  onTap: () => _showCommentDialog(context, feedId),
                   color: mutedText,
                 ),
               ],
@@ -369,30 +400,6 @@ class TenantFeedTab extends StatelessWidget {
     );
   }
 
-  Widget _smallTag({
-    required String text,
-    required Color bgColor,
-    required Color textColor,
-  }) {
-    if (text.trim().isEmpty) return const SizedBox.shrink();
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        text,
-        style: GoogleFonts.inter(
-          fontSize: 11.5,
-          fontWeight: FontWeight.w600,
-          color: textColor,
-        ),
-      ),
-    );
-  }
-
   Widget _feedAction({
     required IconData icon,
     required String label,
@@ -409,11 +416,6 @@ class TenantFeedTab extends StatelessWidget {
           fontWeight: FontWeight.w600,
           fontSize: 13,
         ),
-      ),
-      style: TextButton.styleFrom(
-        foregroundColor: color,
-        overlayColor: color.withOpacity(0.08),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
     );
   }

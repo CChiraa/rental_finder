@@ -1,9 +1,8 @@
-import 'dart:io';
-
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:smart_rental_app/screens/landlord/bc_chat_manager.dart';
+import 'package:smart_rental_app/services/chat_service.dart';
 
 class LandlordChatDetailScreen extends StatefulWidget {
   final Map<String, dynamic> chat;
@@ -18,7 +17,40 @@ class LandlordChatDetailScreen extends StatefulWidget {
 class _LandlordChatDetailScreenState extends State<LandlordChatDetailScreen> {
   final TextEditingController messageController = TextEditingController();
   final ScrollController scrollController = ScrollController();
-  final ImagePicker picker = ImagePicker();
+
+  String get chatId => widget.chat['chatId'] ?? '';
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!scrollController.hasClients) return;
+
+      scrollController.animateTo(
+        scrollController.position.maxScrollExtent + 120,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  Future<void> _sendMessage() async {
+    final String text = messageController.text.trim();
+
+    if (text.isEmpty) return;
+
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) return;
+
+    await ChatService().sendMessage(
+      chatId: chatId,
+      senderId: user.uid,
+      senderName: user.displayName ?? user.email ?? 'Landlord',
+      text: text,
+    );
+
+    messageController.clear();
+    _scrollToBottom();
+  }
 
   @override
   void initState() {
@@ -33,123 +65,14 @@ class _LandlordChatDetailScreenState extends State<LandlordChatDetailScreen> {
     super.dispose();
   }
 
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!scrollController.hasClients) return;
-      scrollController.animateTo(
-        scrollController.position.maxScrollExtent + 120,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
-    });
-  }
-
-  void _sendMessage() {
-    final text = messageController.text.trim();
-    if (text.isEmpty) return;
-
-    setState(() {
-      LandlordChatManager.sendMessage(widget.chat, text);
-    });
-
-    messageController.clear();
-    _scrollToBottom();
-  }
-
-  Future<void> _pickFromCamera() async {
-    final XFile? image = await picker.pickImage(
-      source: ImageSource.camera,
-      imageQuality: 80,
-    );
-
-    if (image == null) return;
-
-    setState(() {
-      LandlordChatManager.sendImageMessage(widget.chat, image.path);
-    });
-
-    _scrollToBottom();
-  }
-
-  Future<void> _pickFromGallery() async {
-    final XFile? image = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 80,
-    );
-
-    if (image == null) return;
-
-    setState(() {
-      LandlordChatManager.sendImageMessage(widget.chat, image.path);
-    });
-
-    _scrollToBottom();
-  }
-
-  void _showImageOptions() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFFF8F1E7),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (_) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 44,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade400,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                ListTile(
-                  leading: const Icon(
-                    Icons.camera_alt_rounded,
-                    color: Color(0xFFC9A24A),
-                  ),
-                  title: Text(
-                    'Take Photo',
-                    style: GoogleFonts.inter(fontWeight: FontWeight.w600),
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _pickFromCamera();
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(
-                    Icons.photo_library_rounded,
-                    color: Color(0xFFC9A24A),
-                  ),
-                  title: Text(
-                    'Choose from Gallery',
-                    style: GoogleFonts.inter(fontWeight: FontWeight.w600),
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _pickFromGallery();
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final List<Map<String, dynamic>> messages = List<Map<String, dynamic>>.from(
-      widget.chat['messages'] ?? [],
-    );
+    final String tenantName = widget.chat['tenantName'] ?? 'Tenant';
+    final String propertyTitle = widget.chat['propertyTitle'] ?? 'Property';
+
+    if (chatId.isEmpty) {
+      return const Scaffold(body: Center(child: Text('Chat ID not found.')));
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F1E7),
@@ -163,7 +86,7 @@ class _LandlordChatDetailScreenState extends State<LandlordChatDetailScreen> {
             CircleAvatar(
               backgroundColor: const Color(0xFFE6BC6D),
               child: Text(
-                (widget.chat['tenantName'] ?? 'T').toString()[0].toUpperCase(),
+                tenantName.isNotEmpty ? tenantName[0].toUpperCase() : 'T',
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -176,7 +99,7 @@ class _LandlordChatDetailScreenState extends State<LandlordChatDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    widget.chat['tenantName'] ?? 'Tenant',
+                    tenantName,
                     style: GoogleFonts.inter(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
@@ -184,7 +107,7 @@ class _LandlordChatDetailScreenState extends State<LandlordChatDetailScreen> {
                     ),
                   ),
                   Text(
-                    widget.chat['propertyTitle'] ?? 'Property',
+                    propertyTitle,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.inter(
                       fontSize: 12,
@@ -205,51 +128,25 @@ class _LandlordChatDetailScreenState extends State<LandlordChatDetailScreen> {
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.85),
               borderRadius: BorderRadius.circular(18),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
             ),
             child: Row(
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child:
-                      (widget.chat['propertyImage'] ?? '').toString().isNotEmpty
-                      ? Image.asset(
-                          widget.chat['propertyImage'],
-                          width: 54,
-                          height: 54,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) {
-                            return Container(
-                              width: 54,
-                              height: 54,
-                              color: const Color(0xFFF3E8D7),
-                              child: const Icon(
-                                Icons.home_work_rounded,
-                                color: Color(0xFFC9A24A),
-                              ),
-                            );
-                          },
-                        )
-                      : Container(
-                          width: 54,
-                          height: 54,
-                          color: const Color(0xFFF3E8D7),
-                          child: const Icon(
-                            Icons.home_work_rounded,
-                            color: Color(0xFFC9A24A),
-                          ),
-                        ),
+                Container(
+                  width: 54,
+                  height: 54,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3E8D7),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.home_work_rounded,
+                    color: Color(0xFFC9A24A),
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Chatting about ${widget.chat['propertyTitle']}',
+                    'Chatting about $propertyTitle',
                     style: GoogleFonts.inter(
                       fontSize: 13.5,
                       fontWeight: FontWeight.w600,
@@ -260,85 +157,90 @@ class _LandlordChatDetailScreenState extends State<LandlordChatDetailScreen> {
               ],
             ),
           ),
-          Expanded(
-            child: ListView.builder(
-              controller: scrollController,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              itemCount: messages.length,
-              itemBuilder: (context, index) {
-                final message = messages[index];
-                final bool isMe = message['isMe'] ?? false;
-                final String text = message['text'] ?? '';
-                final String? imagePath = message['imagePath'];
 
-                return Align(
-                  alignment: isMe
-                      ? Alignment.centerRight
-                      : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 12,
-                    ),
-                    constraints: const BoxConstraints(maxWidth: 260),
-                    decoration: BoxDecoration(
-                      color: isMe
-                          ? const Color(0xFFC9A24A)
-                          : Colors.white.withOpacity(0.95),
-                      borderRadius: BorderRadius.only(
-                        topLeft: const Radius.circular(18),
-                        topRight: const Radius.circular(18),
-                        bottomLeft: Radius.circular(isMe ? 18 : 4),
-                        bottomRight: Radius.circular(isMe ? 4 : 18),
+          Expanded(
+            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: ChatService().getMessages(chatId),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final docs = snapshot.data?.docs ?? [];
+                final currentUser = FirebaseAuth.instance.currentUser;
+
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _scrollToBottom();
+                });
+
+                if (docs.isEmpty) {
+                  return Center(
+                    child: Text(
+                      'No messages yet',
+                      style: GoogleFonts.inter(
+                        color: const Color(0xFF7B664C),
+                        fontSize: 14,
                       ),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        if (imagePath != null && imagePath.isNotEmpty) ...[
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(14),
-                            child: Image.file(
-                              File(imagePath),
-                              width: 190,
-                              height: 190,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                          if (text.isNotEmpty) const SizedBox(height: 8),
-                        ],
-                        if (text.isNotEmpty)
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              text,
-                              style: GoogleFonts.inter(
-                                fontSize: 14,
-                                color: isMe
-                                    ? Colors.white
-                                    : const Color(0xFF2B2118),
-                                height: 1.5,
-                              ),
-                            ),
-                          ),
-                        const SizedBox(height: 4),
-                        Text(
-                          message['time'] ?? '',
-                          style: GoogleFonts.inter(
-                            fontSize: 11,
-                            color: isMe
-                                ? Colors.white70
-                                : const Color(0xFF9A8B78),
+                  );
+                }
+
+                return ListView.builder(
+                  controller: scrollController,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  itemCount: docs.length,
+                  itemBuilder: (context, index) {
+                    final message = docs[index].data();
+
+                    final bool isMe =
+                        currentUser != null &&
+                        message['senderId'] == currentUser.uid;
+
+                    final String text = message['text']?.toString() ?? '';
+
+                    return Align(
+                      alignment: isMe
+                          ? Alignment.centerRight
+                          : Alignment.centerLeft,
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        constraints: const BoxConstraints(maxWidth: 260),
+                        decoration: BoxDecoration(
+                          color: isMe
+                              ? const Color(0xFFC9A24A)
+                              : Colors.white.withOpacity(0.95),
+                          borderRadius: BorderRadius.only(
+                            topLeft: const Radius.circular(18),
+                            topRight: const Radius.circular(18),
+                            bottomLeft: Radius.circular(isMe ? 18 : 4),
+                            bottomRight: Radius.circular(isMe ? 4 : 18),
                           ),
                         ),
-                      ],
-                    ),
-                  ),
+                        child: Text(
+                          text,
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            color: isMe
+                                ? Colors.white
+                                : const Color(0xFF2B2118),
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 );
               },
             ),
           ),
+
           Container(
             padding: const EdgeInsets.fromLTRB(14, 10, 14, 16),
             decoration: BoxDecoration(
@@ -349,20 +251,6 @@ class _LandlordChatDetailScreenState extends State<LandlordChatDetailScreen> {
             ),
             child: Row(
               children: [
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: IconButton(
-                    onPressed: _showImageOptions,
-                    icon: const Icon(
-                      Icons.add_photo_alternate_rounded,
-                      color: Color(0xFFC9A24A),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
                 Expanded(
                   child: TextField(
                     controller: messageController,

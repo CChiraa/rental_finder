@@ -55,6 +55,11 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
         throw Exception('User not logged in');
       }
 
+      final List images = widget.property['images'] ?? [];
+      final String propertyImage = images.isNotEmpty
+          ? images.first.toString()
+          : '';
+
       final chatId = await ChatService().createOrGetChat(
         tenantId: user.uid,
         tenantName: user.displayName ?? 'Tenant',
@@ -62,7 +67,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
         landlordName: widget.property['landlordName'] ?? 'Landlord',
         propertyId: widget.property['docId'] ?? '',
         propertyTitle: widget.property['title'] ?? 'Property',
-        propertyImage: '',
+        propertyImage: propertyImage,
       );
 
       if (!mounted) return;
@@ -135,6 +140,15 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
       );
     }
 
+    final String assetImage = (widget.property['image'] ?? '').toString();
+    if (assetImage.isNotEmpty) {
+      return Image.asset(
+        assetImage,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _emptyImage(dark),
+      );
+    }
+
     return _emptyImage(dark);
   }
 
@@ -158,9 +172,6 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     final Color sheetBg = dark
         ? const Color(0xFF121212)
         : const Color(0xFFF8F1E7);
-
-    final bool isAvailable = widget.property['isAvailable'] == true;
-    final String qrImage = (widget.property['qrImage'] ?? '').toString();
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -348,63 +359,6 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
 
                       const SizedBox(height: 22),
 
-                      _sectionTitle(context, 'Availability'),
-                      const SizedBox(height: 10),
-                      _softCard(
-                        context: context,
-                        child: Row(
-                          children: [
-                            Icon(
-                              isAvailable
-                                  ? Icons.check_circle
-                                  : Icons.cancel_rounded,
-                              color: isAvailable ? Colors.green : Colors.red,
-                            ),
-                            const SizedBox(width: 10),
-                            Text(
-                              isAvailable ? 'Available' : 'Not Available',
-                              style: GoogleFonts.inter(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: primaryText,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 22),
-
-                      _sectionTitle(context, 'Payment QR'),
-                      const SizedBox(height: 10),
-                      _softCard(
-                        context: context,
-                        child: qrImage.isNotEmpty
-                            ? Image.network(
-                                qrImage,
-                                height: 220,
-                                width: double.infinity,
-                                fit: BoxFit.contain,
-                                errorBuilder: (_, __, ___) {
-                                  return const Center(
-                                    child: Text('Unable to load QR image'),
-                                  );
-                                },
-                              )
-                            : Center(
-                                child: Text(
-                                  'No QR uploaded yet',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 14,
-                                    color: secondaryText,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                      ),
-
-                      const SizedBox(height: 22),
-
                       _sectionTitle(context, 'Location'),
                       const SizedBox(height: 10),
                       _softCard(
@@ -464,18 +418,16 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           Expanded(
                             flex: 3,
                             child: GestureDetector(
-                              onTap: isAvailable
-                                  ? () {
-                                      setState(() {
-                                        isChatSelected = false;
-                                      });
-                                      _openBookingSheet();
-                                    }
-                                  : null,
+                              onTap: () {
+                                setState(() {
+                                  isChatSelected = false;
+                                });
+                                _openBookingSheet();
+                              },
                               child: _bookButton(
                                 context: context,
-                                selected: !isChatSelected && isAvailable,
-                                enabled: isAvailable,
+                                selected: !isChatSelected,
+                                enabled: true,
                               ),
                             ),
                           ),

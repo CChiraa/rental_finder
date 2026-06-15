@@ -319,6 +319,31 @@ class _TenantChatTabState extends State<TenantChatTab>
                   ],
                   const SizedBox(height: 10),
                   _statusBadge(booking['status'] ?? 'Pending'),
+
+                  if ((booking['status'] ?? '').toString().toLowerCase() ==
+                          'rejected' &&
+                      (booking['rejectionReason'] ?? '')
+                          .toString()
+                          .isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.red.withOpacity(0.15)),
+                      ),
+                      child: Text(
+                        'Reason: ${booking['rejectionReason']}',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.redAccent,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             );
@@ -359,22 +384,22 @@ class _TenantChatTabState extends State<TenantChatTab>
     );
   }
 
-  Widget _statusBadge(String status) {
+  Widget _statusBadge(dynamic status) {
     Color bg;
     Color textColor;
 
-    switch (status) {
-      case 'Successful':
-      case 'Approved':
+    switch (status.toString().toLowerCase()) {
+      case 'successful':
+      case 'approved':
         bg = Colors.green.withOpacity(0.12);
         textColor = Colors.green;
         break;
-      case 'Pending':
+      case 'pending':
         bg = Colors.orange.withOpacity(0.12);
         textColor = Colors.orange;
         break;
-      case 'Rejected':
-      case 'Unsuccessful':
+      case 'rejected':
+      case 'unsuccessful':
         bg = Colors.red.withOpacity(0.12);
         textColor = Colors.red;
         break;
@@ -390,7 +415,7 @@ class _TenantChatTabState extends State<TenantChatTab>
         borderRadius: BorderRadius.circular(30),
       ),
       child: Text(
-        status,
+        status.toString(),
         style: GoogleFonts.inter(
           fontSize: 11,
           fontWeight: FontWeight.w700,

@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:smart_rental_app/main.dart';
 import 'package:smart_rental_app/screens/welcome_screen.dart';
 import 'package:smart_rental_app/services/auth_service.dart';
 import 'package:smart_rental_app/screens/tenant/tenant_home_screen.dart';
@@ -42,7 +41,6 @@ class _LandlordProfileScreenState extends State<LandlordProfileScreen> {
   String currentLocation = "Kuala Lumpur";
   String? profileImagePath;
 
-  bool isDarkMode = false;
   bool bookingNotifications = true;
   bool chatNotifications = true;
   bool payoutNotifications = true;
@@ -84,7 +82,6 @@ class _LandlordProfileScreenState extends State<LandlordProfileScreen> {
       context,
       MaterialPageRoute(
         builder: (_) => LandlordSettingsScreen(
-          isDarkMode: isDarkMode,
           bookingNotifications: bookingNotifications,
           chatNotifications: chatNotifications,
           payoutNotifications: payoutNotifications,
@@ -94,15 +91,12 @@ class _LandlordProfileScreenState extends State<LandlordProfileScreen> {
 
     if (result != null) {
       setState(() {
-        isDarkMode = result['isDarkMode'] ?? isDarkMode;
         bookingNotifications =
             result['bookingNotifications'] ?? bookingNotifications;
         chatNotifications = result['chatNotifications'] ?? chatNotifications;
         payoutNotifications =
             result['payoutNotifications'] ?? payoutNotifications;
       });
-
-      MyApp.of(context)?.setDarkMode(isDarkMode);
     }
   }
 
@@ -284,15 +278,6 @@ class _LandlordProfileScreenState extends State<LandlordProfileScreen> {
                       secondaryText: secondaryText,
                     ),
                     _menuTile(
-                      icon: Icons.swap_horiz_rounded,
-                      title: "Switch to Tenant",
-                      subtitle: "Use this account as a tenant",
-                      onTap: _switchToTenant,
-                      cardBg: cardBg,
-                      primaryText: primaryText,
-                      secondaryText: secondaryText,
-                    ),
-                    _menuTile(
                       icon: Icons.home_work_outlined,
                       title: "My Properties",
                       subtitle: "Manage your property listings",
@@ -366,7 +351,7 @@ class _LandlordProfileScreenState extends State<LandlordProfileScreen> {
                     _menuTile(
                       icon: Icons.settings_outlined,
                       title: "Settings",
-                      subtitle: "Theme, notifications and app preferences",
+                      subtitle: "Notifications and app preferences",
                       onTap: _openSettings,
                       cardBg: cardBg,
                       primaryText: primaryText,
@@ -517,6 +502,24 @@ class _LandlordProfileScreenState extends State<LandlordProfileScreen> {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _switchToTenant,
+              icon: const Icon(Icons.swap_horiz_rounded),
+              label: const Text('Switch Account'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFB17B30),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 18),
           Row(

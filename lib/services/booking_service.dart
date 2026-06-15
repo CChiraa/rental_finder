@@ -32,6 +32,7 @@ class BookingService {
       'paymentMethod': paymentMethod,
       'receiptPath': receiptPath,
       'status': 'Pending',
+      'rejectionReason': '',
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
@@ -65,8 +66,65 @@ class BookingService {
         .snapshots();
   }
 
+  Stream<QuerySnapshot<Map<String, dynamic>>> getPropertyBookings(
+    String propertyId,
+  ) {
+    return _bookings.where('propertyId', isEqualTo: propertyId).snapshots();
+  }
+
   Stream<QuerySnapshot<Map<String, dynamic>>> getAllBookings() {
     return _bookings.orderBy('createdAt', descending: true).snapshots();
+  }
+
+  Future<bool> hasDateConflict({
+    required String propertyId,
+    required String checkIn,
+    required String checkOut,
+  }) async {
+    final snapshot = await _bookings
+        .where('propertyId', isEqualTo: propertyId)
+        .get();
+
+    final DateTime newStart = _parseDate(checkIn);
+    final DateTime newEnd = _parseDate(checkOut);
+
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      final status = (data['status'] ?? '').toString().toLowerCase();
+
+      if (status == 'rejected' ||
+          status == 'cancelled' ||
+          status == 'unsuccessful') {
+        continue;
+      }
+
+      final DateTime existingStart = _parseDate(data['checkIn']);
+      final DateTime existingEnd = _parseDate(data['checkOut']);
+
+      final bool overlaps =
+          newStart.isBefore(existingEnd) && newEnd.isAfter(existingStart);
+
+      if (overlaps) return true;
+    }
+
+    return false;
+  }
+
+  DateTime _parseDate(dynamic value) {
+    if (value == null) return DateTime.now();
+
+    final text = value.toString();
+    final parts = text.split('/');
+
+    if (parts.length == 3) {
+      return DateTime(
+        int.parse(parts[2]),
+        int.parse(parts[1]),
+        int.parse(parts[0]),
+      );
+    }
+
+    return DateTime.now();
   }
 
   Future<void> updateBookingStatus({
@@ -107,6 +165,7 @@ class BookingService {
 
     await _bookings.doc(bookingId).update({
       'status': 'Approved',
+      'rejectionReason': '',
       'updatedAt': FieldValue.serverTimestamp(),
     });
 
@@ -127,7 +186,10 @@ class BookingService {
     }
   }
 
-  Future<void> rejectBooking(String bookingId) async {
+  Future<void> rejectBooking(
+    String bookingId, {
+    String rejectionReason = '',
+  }) async {
     final bookingDoc = await _bookings.doc(bookingId).get();
 
     if (!bookingDoc.exists || bookingDoc.data() == null) {
@@ -141,6 +203,7 @@ class BookingService {
 
     await _bookings.doc(bookingId).update({
       'status': 'Rejected',
+      'rejectionReason': rejectionReason.trim(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
 
@@ -148,7 +211,9 @@ class BookingService {
       await _notificationService.addNotification(
         userId: tenantId,
         title: 'Booking Rejected',
-        message: 'Your booking for $propertyTitle has been rejected.',
+        message: rejectionReason.trim().isEmpty
+            ? 'Your booking for $propertyTitle has been rejected.'
+            : 'Your booking for $propertyTitle has been rejected. Reason: ${rejectionReason.trim()}',
         type: 'booking_rejected',
       );
     }

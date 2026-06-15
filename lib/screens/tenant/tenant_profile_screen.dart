@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:smart_rental_app/main.dart';
 import 'package:smart_rental_app/screens/welcome_screen.dart';
 import 'package:smart_rental_app/services/auth_service.dart';
 import 'package:smart_rental_app/screens/landlord/landlord_home_screen.dart';
@@ -43,7 +42,6 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
   String currentLocation = "Kuala Lumpur";
   String? profileImagePath;
 
-  bool isDarkMode = false;
   bool bookingNotifications = true;
   bool chatNotifications = true;
   bool promotionalNotifications = false;
@@ -85,7 +83,6 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
       context,
       MaterialPageRoute(
         builder: (_) => TenantSettingsScreen(
-          isDarkMode: isDarkMode,
           bookingNotifications: bookingNotifications,
           chatNotifications: chatNotifications,
           promotionalNotifications: promotionalNotifications,
@@ -95,15 +92,12 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
 
     if (result != null) {
       setState(() {
-        isDarkMode = result['isDarkMode'] ?? isDarkMode;
         bookingNotifications =
             result['bookingNotifications'] ?? bookingNotifications;
         chatNotifications = result['chatNotifications'] ?? chatNotifications;
         promotionalNotifications =
             result['promotionalNotifications'] ?? promotionalNotifications;
       });
-
-      MyApp.of(context)?.setDarkMode(isDarkMode);
     }
   }
 
@@ -202,9 +196,7 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
         ),
       );
 
-      if (confirm != true) {
-        return;
-      }
+      if (confirm != true) return;
 
       final String nric = nricController.text.trim();
 
@@ -365,15 +357,6 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
                       secondaryText: secondaryText,
                     ),
                     _menuTile(
-                      icon: Icons.business_center_outlined,
-                      title: "Become a Landlord",
-                      subtitle: "List and manage rental properties",
-                      onTap: _becomeLandlord,
-                      cardBg: cardBg,
-                      primaryText: primaryText,
-                      secondaryText: secondaryText,
-                    ),
-                    _menuTile(
                       icon: Icons.favorite_border_rounded,
                       title: "Saved Properties",
                       subtitle: "Your favourite rental listings",
@@ -431,7 +414,7 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
                     _menuTile(
                       icon: Icons.settings_outlined,
                       title: "Settings",
-                      subtitle: "Theme, notifications and app preferences",
+                      subtitle: "Notifications and app preferences",
                       onTap: _openSettings,
                       cardBg: cardBg,
                       primaryText: primaryText,
@@ -598,6 +581,24 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _becomeLandlord,
+              icon: const Icon(Icons.swap_horiz_rounded),
+              label: const Text('Switch Account'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFB17B30),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 18),
           Row(

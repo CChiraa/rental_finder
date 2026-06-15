@@ -2,14 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class TenantSettingsScreen extends StatefulWidget {
-  final bool isDarkMode;
   final bool bookingNotifications;
   final bool chatNotifications;
   final bool promotionalNotifications;
 
   const TenantSettingsScreen({
     super.key,
-    required this.isDarkMode,
+
     required this.bookingNotifications,
     required this.chatNotifications,
     required this.promotionalNotifications,
@@ -20,7 +19,6 @@ class TenantSettingsScreen extends StatefulWidget {
 }
 
 class _TenantSettingsScreenState extends State<TenantSettingsScreen> {
-  late bool isDarkMode;
   late bool bookingNotifications;
   late bool chatNotifications;
   late bool promotionalNotifications;
@@ -28,7 +26,6 @@ class _TenantSettingsScreenState extends State<TenantSettingsScreen> {
   @override
   void initState() {
     super.initState();
-    isDarkMode = widget.isDarkMode;
     bookingNotifications = widget.bookingNotifications;
     chatNotifications = widget.chatNotifications;
     promotionalNotifications = widget.promotionalNotifications;
@@ -36,7 +33,6 @@ class _TenantSettingsScreenState extends State<TenantSettingsScreen> {
 
   void _saveSettings() {
     Navigator.pop(context, {
-      'isDarkMode': isDarkMode,
       'bookingNotifications': bookingNotifications,
       'chatNotifications': chatNotifications,
       'promotionalNotifications': promotionalNotifications,
@@ -100,17 +96,6 @@ class _TenantSettingsScreenState extends State<TenantSettingsScreen> {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            _switchTile(
-              title: 'Dark Mode',
-              subtitle: dark
-                  ? 'Use navy blue dark theme'
-                  : 'Use light luxury theme',
-              value: isDarkMode,
-              onChanged: (value) => setState(() => isDarkMode = value),
-              cardBg: cardBg,
-              primaryText: primaryText,
-              secondaryText: secondaryText,
-            ),
             _switchTile(
               title: 'Booking Notifications',
               subtitle: 'Get alerts for booking updates',

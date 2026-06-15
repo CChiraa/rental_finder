@@ -26,66 +26,242 @@ class _TenantMapTabState extends State<TenantMapTab> {
     {
       'id': 'kl_sentral',
       'name': 'KL Sentral',
-      'location': 'Brickfields, Kuala Lumpur',
+      'location': 'Brickfields',
       'lat': 3.1343,
       'lng': 101.6861,
       'type': 'Transit Hub',
     },
     {
+      'id': 'tbs',
+      'name': 'Terminal Bersepadu Selatan (TBS)',
+      'location': 'Bandar Tasik Selatan',
+      'lat': 3.0764,
+      'lng': 101.7116,
+      'type': 'Bus Terminal',
+    },
+    {
+      'id': 'puduraya',
+      'name': 'Pudu Sentral',
+      'location': 'City Centre',
+      'lat': 3.1456,
+      'lng': 101.6985,
+      'type': 'Bus Terminal',
+    },
+    {
+      'id': 'trx',
+      'name': 'MRT TRX',
+      'location': 'Tun Razak Exchange',
+      'lat': 3.1428,
+      'lng': 101.7191,
+      'type': 'MRT',
+    },
+    {
+      'id': 'cochrane',
+      'name': 'MRT Cochrane',
+      'location': 'Cochrane',
+      'lat': 3.1329,
+      'lng': 101.7227,
+      'type': 'MRT',
+    },
+    {
+      'id': 'maluri',
+      'name': 'MRT Maluri',
+      'location': 'Maluri',
+      'lat': 3.1238,
+      'lng': 101.7274,
+      'type': 'MRT',
+    },
+    {
       'id': 'pasar_seni',
-      'name': 'Pasar Seni',
-      'location': 'City Centre, Kuala Lumpur',
+      'name': 'MRT Pasar Seni',
+      'location': 'City Centre',
       'lat': 3.1424,
       'lng': 101.6953,
-      'type': 'LRT / MRT',
+      'type': 'MRT',
+    },
+    {
+      'id': 'muzium_negara',
+      'name': 'MRT Muzium Negara',
+      'location': 'KL Sentral',
+      'lat': 3.1377,
+      'lng': 101.6872,
+      'type': 'MRT',
+    },
+    {
+      'id': 'semantan',
+      'name': 'MRT Semantan',
+      'location': 'Damansara Heights',
+      'lat': 3.1514,
+      'lng': 101.6656,
+      'type': 'MRT',
+    },
+    {
+      'id': 'titiwangsa_mrt',
+      'name': 'MRT Titiwangsa',
+      'location': 'Titiwangsa',
+      'lat': 3.1738,
+      'lng': 101.6960,
+      'type': 'MRT',
+    },
+    {
+      'id': 'bukit_bintang_mrt',
+      'name': 'MRT Bukit Bintang',
+      'location': 'Bukit Bintang',
+      'lat': 3.1469,
+      'lng': 101.7113,
+      'type': 'MRT',
     },
     {
       'id': 'masjid_jamek',
-      'name': 'Masjid Jamek',
-      'location': 'Jalan Tun Perak, Kuala Lumpur',
+      'name': 'LRT Masjid Jamek',
+      'location': 'Jalan Tun Perak',
       'lat': 3.1486,
       'lng': 101.6958,
       'type': 'LRT',
     },
     {
-      'id': 'bukit_bintang',
-      'name': 'Bukit Bintang',
-      'location': 'Bukit Bintang, Kuala Lumpur',
-      'lat': 3.1469,
-      'lng': 101.7113,
-      'type': 'MRT / Monorail',
-    },
-    {
-      'id': 'hang_tuah',
-      'name': 'Hang Tuah',
-      'location': 'Jalan Hang Tuah, Kuala Lumpur',
-      'lat': 3.1407,
-      'lng': 101.7071,
-      'type': 'LRT / Monorail',
-    },
-    {
-      'id': 'titiwangsa',
-      'name': 'Titiwangsa',
-      'location': 'Titiwangsa, Kuala Lumpur',
-      'lat': 3.1738,
-      'lng': 101.6960,
-      'type': 'LRT / MRT / Monorail',
-    },
-    {
       'id': 'bandaraya',
-      'name': 'Bandaraya',
-      'location': 'Jalan Tuanku Abdul Rahman, Kuala Lumpur',
+      'name': 'LRT Bandaraya',
+      'location': 'Jalan TAR',
       'lat': 3.1593,
       'lng': 101.6948,
       'type': 'LRT',
     },
     {
-      'id': 'trx',
-      'name': 'TRX',
-      'location': 'Tun Razak Exchange, Kuala Lumpur',
-      'lat': 3.1428,
-      'lng': 101.7191,
-      'type': 'MRT',
+      'id': 'klcc',
+      'name': 'LRT KLCC',
+      'location': 'KLCC',
+      'lat': 3.1578,
+      'lng': 101.7123,
+      'type': 'LRT',
+    },
+    {
+      'id': 'dang_wangi',
+      'name': 'LRT Dang Wangi',
+      'location': 'Dang Wangi',
+      'lat': 3.1561,
+      'lng': 101.7015,
+      'type': 'LRT',
+    },
+    {
+      'id': 'universiti',
+      'name': 'LRT Universiti',
+      'location': 'University of Malaya',
+      'lat': 3.1144,
+      'lng': 101.6612,
+      'type': 'LRT',
+    },
+    {
+      'id': 'kerinchi',
+      'name': 'LRT Kerinchi',
+      'location': 'Bangsar South',
+      'lat': 3.1116,
+      'lng': 101.6676,
+      'type': 'LRT',
+    },
+    {
+      'id': 'abdullah_hukum',
+      'name': 'LRT Abdullah Hukum',
+      'location': 'Bangsar South',
+      'lat': 3.1187,
+      'lng': 101.6715,
+      'type': 'LRT',
+    },
+    {
+      'id': 'bukit_bintang_monorail',
+      'name': 'Monorail Bukit Bintang',
+      'location': 'Bukit Bintang',
+      'lat': 3.1460,
+      'lng': 101.7118,
+      'type': 'Monorail',
+    },
+    {
+      'id': 'imbi',
+      'name': 'Monorail Imbi',
+      'location': 'Imbi',
+      'lat': 3.1421,
+      'lng': 101.7114,
+      'type': 'Monorail',
+    },
+    {
+      'id': 'hang_tuah',
+      'name': 'Monorail Hang Tuah',
+      'location': 'Hang Tuah',
+      'lat': 3.1407,
+      'lng': 101.7071,
+      'type': 'Monorail',
+    },
+    {
+      'id': 'maharajalela',
+      'name': 'Monorail Maharajalela',
+      'location': 'Maharajalela',
+      'lat': 3.1374,
+      'lng': 101.7019,
+      'type': 'Monorail',
+    },
+    {
+      'id': 'chow_kit',
+      'name': 'Monorail Chow Kit',
+      'location': 'Chow Kit',
+      'lat': 3.1663,
+      'lng': 101.6974,
+      'type': 'Monorail',
+    },
+    {
+      'id': 'ktm_putra',
+      'name': 'KTM Putra',
+      'location': 'PWTC',
+      'lat': 3.1662,
+      'lng': 101.6925,
+      'type': 'KTM',
+    },
+    {
+      'id': 'ktm_bank_negara',
+      'name': 'KTM Bank Negara',
+      'location': 'Bank Negara',
+      'lat': 3.1568,
+      'lng': 101.6921,
+      'type': 'KTM',
+    },
+    {
+      'id': 'ktm_sentul',
+      'name': 'KTM Sentul',
+      'location': 'Sentul',
+      'lat': 3.1747,
+      'lng': 101.6869,
+      'type': 'KTM',
+    },
+    {
+      'id': 'ktm_mid_valley',
+      'name': 'KTM Mid Valley',
+      'location': 'Mid Valley',
+      'lat': 3.1182,
+      'lng': 101.6775,
+      'type': 'KTM',
+    },
+    {
+      'id': 'ktm_seputeh',
+      'name': 'KTM Seputeh',
+      'location': 'Seputeh',
+      'lat': 3.1273,
+      'lng': 101.6857,
+      'type': 'KTM',
+    },
+    {
+      'id': 'erl_klsentral',
+      'name': 'ERL KL Sentral',
+      'location': 'KL Sentral',
+      'lat': 3.1343,
+      'lng': 101.6861,
+      'type': 'ERL',
+    },
+    {
+      'id': 'erl_bts',
+      'name': 'ERL Bandar Tasik Selatan',
+      'location': 'Bandar Tasik Selatan',
+      'lat': 3.0764,
+      'lng': 101.7116,
+      'type': 'ERL',
     },
   ];
 
@@ -144,6 +320,8 @@ class _TenantMapTabState extends State<TenantMapTab> {
 
   Set<Marker> get transportMarkers {
     return publicTransportStations.map((station) {
+      final String type = station['type'].toString();
+
       return Marker(
         markerId: MarkerId(station['id'].toString()),
         position: LatLng(
@@ -152,9 +330,17 @@ class _TenantMapTabState extends State<TenantMapTab> {
         ),
         infoWindow: InfoWindow(
           title: station['name'].toString(),
-          snippet: '${station['type']} • ${station['location']}',
+          snippet: '$type • ${station['location']}',
         ),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+        icon: BitmapDescriptor.defaultMarkerWithHue(
+          type.contains('Bus')
+              ? BitmapDescriptor.hueOrange
+              : type.contains('ERL')
+              ? BitmapDescriptor.hueViolet
+              : type.contains('KTM')
+              ? BitmapDescriptor.hueGreen
+              : BitmapDescriptor.hueAzure,
+        ),
       );
     }).toSet();
   }
@@ -410,9 +596,11 @@ class _TenantMapTabState extends State<TenantMapTab> {
                   const SizedBox(width: 16),
                   _legendDot(
                     const Color(0xFF2196F3),
-                    'Public Transport',
+                    'Rail',
                     labelColor: secondaryText,
                   ),
+                  const SizedBox(width: 16),
+                  _legendDot(Colors.orange, 'Bus', labelColor: secondaryText),
                 ],
               ),
               const SizedBox(height: 14),
@@ -631,10 +819,22 @@ class _TenantMapTabState extends State<TenantMapTab> {
                                       ),
                                       child: Row(
                                         children: [
-                                          const Icon(
-                                            Icons.train_rounded,
+                                          Icon(
+                                            nearest['type'].toString().contains(
+                                                  'Bus',
+                                                )
+                                                ? Icons.directions_bus_rounded
+                                                : nearest['type']
+                                                      .toString()
+                                                      .contains('ERL')
+                                                ? Icons.airport_shuttle_rounded
+                                                : nearest['type']
+                                                      .toString()
+                                                      .contains('KTM')
+                                                ? Icons.tram_rounded
+                                                : Icons.train_rounded,
                                             size: 18,
-                                            color: Color(0xFF2196F3),
+                                            color: const Color(0xFF2196F3),
                                           ),
                                           const SizedBox(width: 8),
                                           Expanded(

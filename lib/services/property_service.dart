@@ -31,7 +31,16 @@ class PropertyService {
       'landlordName': landlordName.trim(),
       'images': images,
       'qrImage': qrImage,
+
+      // Feed & engagement
+      'likesCount': 0,
+      'commentsCount': 0,
+      'sharesCount': 0,
+
+      // Property status
       'isAvailable': true,
+
+      // Timestamps
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
@@ -63,6 +72,34 @@ class PropertyService {
     await _properties.doc(propertyId).update({
       ...data,
       'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> updatePropertyAvailability({
+    required String propertyId,
+    required bool isAvailable,
+  }) async {
+    await _properties.doc(propertyId).update({
+      'isAvailable': isAvailable,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> incrementLikes(String propertyId) async {
+    await _properties.doc(propertyId).update({
+      'likesCount': FieldValue.increment(1),
+    });
+  }
+
+  Future<void> decrementLikes(String propertyId) async {
+    await _properties.doc(propertyId).update({
+      'likesCount': FieldValue.increment(-1),
+    });
+  }
+
+  Future<void> incrementComments(String propertyId) async {
+    await _properties.doc(propertyId).update({
+      'commentsCount': FieldValue.increment(1),
     });
   }
 

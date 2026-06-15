@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -278,6 +279,63 @@ class _LandlordAddTabState extends State<LandlordAddTab> {
     }
   }
 
+  Future<void> _saveFeedPost() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+
+      if (user == null) {
+        throw Exception('User not logged in');
+      }
+
+      final imageUrl = await _storageService.uploadImage(
+        folderName: 'feed_posts/${user.uid}',
+        filePath: feedImage!.path,
+      );
+
+      await FirebaseFirestore.instance.collection('feeds').add({
+        'landlordId': user.uid,
+        'landlordName': user.displayName ?? user.email ?? 'Landlord',
+        'title': promoTitleController.text.trim(),
+        'propertyName': selectedFeedProperty,
+        'tag': selectedPromoTag,
+        'caption': feedCaptionController.text.trim(),
+        'details': promoDetailsController.text.trim(),
+        'note': promoDiscountController.text.trim(),
+        'imageUrl': imageUrl,
+        'likesCount': 0,
+        'commentsCount': 0,
+        'sharesCount': 0,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Feed post uploaded successfully.')),
+      );
+
+      setState(() {
+        promoTitleController.clear();
+        feedCaptionController.clear();
+        promoDetailsController.clear();
+        promoDiscountController.clear();
+        feedImage = null;
+        selectedPromoTag = 'New Listing';
+        selectedFeedProperty = 'Condo near KLCC';
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to upload feed post: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final Color primaryText = Theme.of(context).colorScheme.onSurface;
@@ -428,17 +486,14 @@ class _LandlordAddTabState extends State<LandlordAddTab> {
               ),
             ),
             const SizedBox(height: 18),
-
             _buildLabel("Property Title"),
             _buildTextField(
               controller: titleController,
               hintText: "Eg. Luxury Condo near KLCC",
             ),
-
             const SizedBox(height: 18),
             _buildSectionMiniTitle("Location Details", goldText),
             const SizedBox(height: 10),
-
             Row(
               children: [
                 Expanded(
@@ -505,12 +560,10 @@ class _LandlordAddTabState extends State<LandlordAddTab> {
                 ),
               ],
             ),
-
             if (showLocationPreview) ...[
               const SizedBox(height: 14),
               _buildLocationPreviewCard(primaryText, secondaryText),
             ],
-
             const SizedBox(height: 18),
             _buildLabel("Price"),
             _buildTextField(
@@ -518,7 +571,6 @@ class _LandlordAddTabState extends State<LandlordAddTab> {
               hintText: "Eg. RM180 / night",
               keyboardType: TextInputType.number,
             ),
-
             const SizedBox(height: 14),
             _buildLabel("Property Type"),
             _buildDropdown(
@@ -538,7 +590,6 @@ class _LandlordAddTabState extends State<LandlordAddTab> {
                 });
               },
             ),
-
             const SizedBox(height: 14),
             _buildLabel("Rental Type"),
             _buildDropdown(
@@ -550,11 +601,9 @@ class _LandlordAddTabState extends State<LandlordAddTab> {
                 });
               },
             ),
-
             const SizedBox(height: 18),
             _buildSectionMiniTitle("Property Capacity", goldText),
             const SizedBox(height: 10),
-
             Row(
               children: [
                 Expanded(
@@ -582,7 +631,6 @@ class _LandlordAddTabState extends State<LandlordAddTab> {
                 ),
               ],
             ),
-
             const SizedBox(height: 14),
             _buildLabel("Bedroom Type"),
             _buildDropdown(
@@ -594,7 +642,6 @@ class _LandlordAddTabState extends State<LandlordAddTab> {
                 });
               },
             ),
-
             const SizedBox(height: 18),
             _buildSectionMiniTitle("What your place offers", goldText),
             const SizedBox(height: 10),
@@ -642,7 +689,6 @@ class _LandlordAddTabState extends State<LandlordAddTab> {
                 );
               }).toList(),
             ),
-
             const SizedBox(height: 18),
             _buildLabel("Description"),
             _buildTextField(
@@ -651,7 +697,6 @@ class _LandlordAddTabState extends State<LandlordAddTab> {
                   "Describe the property, facilities, style, vibe and who it suits best",
               maxLines: 5,
             ),
-
             const SizedBox(height: 18),
             _buildSectionMiniTitle("Images", goldText),
             const SizedBox(height: 10),
@@ -661,7 +706,6 @@ class _LandlordAddTabState extends State<LandlordAddTab> {
               onTap: pickPropertyImages,
               images: propertyImages,
             ),
-
             const SizedBox(height: 18),
             _buildSectionMiniTitle("Payment QR", goldText),
             const SizedBox(height: 10),
@@ -671,7 +715,6 @@ class _LandlordAddTabState extends State<LandlordAddTab> {
               onTap: pickQrImage,
               images: qrImage == null ? [] : [qrImage!],
             ),
-
             const SizedBox(height: 22),
             SizedBox(
               width: double.infinity,
@@ -710,7 +753,33 @@ class _LandlordAddTabState extends State<LandlordAddTab> {
                   }
 
                   if (validForm) {
-                    await _saveProperty();
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        title: const Text('Publish Property'),
+                        content: const Text(
+                          'Are you sure you want to publish this property?',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('Cancel'),
+                          ),
+                          ElevatedButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFC9A24A),
+                              foregroundColor: Colors.white,
+                            ),
+                            child: const Text('Publish'),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (confirm == true) {
+                      await _saveProperty();
+                    }
                   }
                 },
                 icon: const Icon(Icons.add_home_work_rounded),
@@ -750,7 +819,7 @@ class _LandlordAddTabState extends State<LandlordAddTab> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "Create Feed Promotion",
+              "Create Feed Post",
               style: GoogleFonts.inter(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
@@ -759,7 +828,7 @@ class _LandlordAddTabState extends State<LandlordAddTab> {
             ),
             const SizedBox(height: 6),
             Text(
-              "Promote your listing with a stronger visual post and clear booking message.",
+              "Share an update, announcement, or property highlight for tenants to see in the Feed page.",
               style: GoogleFonts.inter(
                 fontSize: 12.8,
                 color: secondaryText,
@@ -768,13 +837,11 @@ class _LandlordAddTabState extends State<LandlordAddTab> {
               ),
             ),
             const SizedBox(height: 18),
-
             _buildLabel("Post Title"),
             _buildTextField(
               controller: promoTitleController,
-              hintText: "Eg. Weekend Special Promo",
+              hintText: "Eg. New cozy unit available this weekend",
             ),
-
             const SizedBox(height: 14),
             _buildLabel("Related Property"),
             _buildDropdown(
@@ -786,9 +853,8 @@ class _LandlordAddTabState extends State<LandlordAddTab> {
                 });
               },
             ),
-
             const SizedBox(height: 14),
-            _buildLabel("Promo Tag"),
+            _buildLabel("Post Tag"),
             _buildDropdown(
               value: selectedPromoTag,
               items: promoTags,
@@ -798,46 +864,41 @@ class _LandlordAddTabState extends State<LandlordAddTab> {
                 });
               },
             ),
-
             const SizedBox(height: 14),
             _buildLabel("Caption"),
             _buildTextField(
               controller: feedCaptionController,
-              hintText: "Eg. Cozy stay near KLCC with special price this week!",
+              hintText: "Eg. Cozy stay near KLCC with city view and fast wifi!",
               maxLines: 3,
             ),
-
             const SizedBox(height: 14),
-            _buildLabel("Promotion Details"),
+            _buildLabel("Post Details"),
             _buildTextField(
               controller: promoDetailsController,
-              hintText: "Eg. Fully furnished with city view and fast wifi",
+              hintText:
+                  "Eg. Fully furnished with city view and suitable for young workers",
               maxLines: 3,
             ),
-
             const SizedBox(height: 14),
-            _buildLabel("Discount / Special Note"),
+            _buildLabel("Extra Note"),
             _buildTextField(
               controller: promoDiscountController,
-              hintText: "Eg. 10% off for early bookings",
+              hintText: "Eg. Near MRT, food shops and office area",
             ),
-
             const SizedBox(height: 18),
             _buildImagePickerArea(
               title: "Upload Feed Image",
-              subtitle: "Add one strong promo image",
+              subtitle: "Add one strong feed image",
               onTap: pickFeedImage,
               images: feedImage == null ? [] : [feedImage!],
             ),
-
             const SizedBox(height: 18),
             _buildFeedPreviewCard(primaryText, secondaryText, goldText),
-
             const SizedBox(height: 22),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: () {
+                onPressed: () async {
                   final bool validForm =
                       _feedFormKey.currentState?.validate() ?? false;
 
@@ -850,16 +911,12 @@ class _LandlordAddTabState extends State<LandlordAddTab> {
                     return;
                   }
 
-                  if (validForm) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Feed promotion posted successfully."),
-                      ),
-                    );
-                  }
+                  if (!validForm) return;
+
+                  await _saveFeedPost();
                 },
                 icon: const Icon(Icons.send_rounded),
-                label: const Text("Post Promotion"),
+                label: const Text("Post Feed"),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFC9A24A),
                   foregroundColor: Colors.white,
