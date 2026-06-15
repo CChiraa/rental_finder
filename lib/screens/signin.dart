@@ -4,6 +4,7 @@ import 'package:smart_rental_app/screens/signup.dart';
 import 'package:smart_rental_app/screens/forget_password.dart';
 import 'package:smart_rental_app/screens/tenant/tenant_home_screen.dart';
 import 'package:smart_rental_app/screens/landlord/landlord_home_screen.dart';
+import 'package:smart_rental_app/screens/admin/admin_home_screen.dart';
 import 'package:smart_rental_app/services/auth_service.dart';
 
 class SignInScreen extends StatefulWidget {
@@ -94,7 +95,15 @@ class _SignInScreenState extends State<SignInScreen> {
       final userEmail = userData['email'] ?? email;
       final String activeRole = userData['activeRole'] ?? 'Tenant';
 
-      if (activeRole == 'Tenant') {
+      if (activeRole == 'Admin') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                AdminHomeScreen(userName: name, userEmail: userEmail),
+          ),
+        );
+      } else if (activeRole == 'Tenant') {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -141,7 +150,15 @@ class _SignInScreenState extends State<SignInScreen> {
       final String userEmail = userData['email'] ?? '';
       final String activeRole = userData['activeRole'] ?? 'Tenant';
 
-      if (activeRole == 'Landlord') {
+      if (activeRole == 'Admin') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                AdminHomeScreen(userName: name, userEmail: userEmail),
+          ),
+        );
+      } else if (activeRole == 'Landlord') {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
