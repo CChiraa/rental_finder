@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:smart_rental_app/services/report_service.dart';
 
 class ReportIssueScreen extends StatefulWidget {
   const ReportIssueScreen({super.key});
@@ -14,6 +15,8 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
   String selectedIssue = 'Scam by landlord';
   final TextEditingController subjectController = TextEditingController();
   final TextEditingController detailsController = TextEditingController();
+
+  bool _submitting = false;
 
   final List<String> issueTypes = [
     'Scam by landlord',
@@ -31,10 +34,20 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
     super.dispose();
   }
 
-  void _submitReport() {
-    if (_formKey.currentState!.validate()) {
-      FocusScope.of(context).unfocus();
-      final bool dark = Theme.of(context).brightness == Brightness.dark;
+  Future<void> _submitReport() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    FocusScope.of(context).unfocus();
+    setState(() => _submitting = true);
+
+    try {
+      await ReportService().submitReport(
+        issueType: selectedIssue,
+        subject: subjectController.text,
+        details: detailsController.text,
+      );
+
+      if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -54,10 +67,21 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
       );
 
       Future.delayed(const Duration(milliseconds: 700), () {
-        if (mounted) {
-          Navigator.pop(context);
-        }
+        if (mounted) Navigator.pop(context);
       });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+          content: Text(
+            'Failed to send report. Please try again.',
+            style: GoogleFonts.inter(color: Colors.white),
+          ),
+        ),
+      );
     }
   }
 
@@ -69,28 +93,35 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
 
     final Gradient backgroundGradient = dark
         ? const LinearGradient(
-            colors: [Color(0xFF0B1220), Color(0xFF111827), Color(0xFF172554)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF0B1220),
+              Color(0xFF111827),
+              Color(0xFF172554),
+              Color(0xFF0F172A),
+            ],
           )
         : const LinearGradient(
-            colors: [Color(0xFFF8F1E7), Color(0xFFF2E6D5), Color(0xFFEAD8BE)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
+            colors: [
+              Color(0xFFF8F1E7),
+              Color(0xFFF2E6D5),
+              Color(0xFFEAD8BE),
+              Color(0xFFF7EFE5),
+            ],
           );
 
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        surfaceTintColor: Colors.transparent,
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        centerTitle: true,
-        iconTheme: IconThemeData(color: primaryText),
         title: Text(
           'Report an Issue',
           style: GoogleFonts.cormorantGaramond(
-            fontSize: 28,
+            fontSize: 26,
             fontWeight: FontWeight.w700,
             color: primaryText,
           ),
@@ -98,15 +129,15 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
       ),
       body: Container(
         decoration: BoxDecoration(gradient: backgroundGradient),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
+        child: SafeArea(
+          top: false,
           child: Form(
             key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
               children: [
-                _buildWarningCard(context),
-                const SizedBox(height: 22),
+                _infoCard(context, dark),
+                const SizedBox(height: 20),
                 _sectionLabel(context, 'Issue Type'),
                 const SizedBox(height: 10),
                 _buildDropdownField(context),
@@ -116,8 +147,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                 _buildTextField(
                   context: context,
                   controller: subjectController,
-                  hintText: 'Enter a short subject',
-                  maxLines: 1,
+                  hintText: 'Short summary of the issue',
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
                       return 'Please enter a subject';
@@ -171,57 +201,48 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          'Tip: Include clear details such as landlord name, property title, payment reference, date, or screenshots when explaining the problem.',
+                          'Tip: Include clear details such as landlord name, '
+                          'property title, payment reference, date, or '
+                          'screenshots when explaining the problem.',
                           style: GoogleFonts.inter(
                             fontSize: 12.5,
-                            height: 1.5,
                             color: secondaryText,
+                            height: 1.5,
                           ),
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 26),
                 SizedBox(
                   width: double.infinity,
-                  height: 56,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(18),
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFE1C27A), Color(0xFFB8964F)],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFB8964F).withOpacity(0.20),
-                          blurRadius: 14,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: ElevatedButton.icon(
-                      onPressed: _submitReport,
-                      icon: const Icon(
-                        Icons.report_problem_outlined,
-                        color: Colors.white,
-                      ),
-                      label: Text(
-                        'Submit Report',
-                        style: GoogleFonts.inter(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                          color: Colors.white,
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        shadowColor: Colors.transparent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
-                        ),
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFB17B30),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
                       ),
                     ),
+                    onPressed: _submitting ? null : _submitReport,
+                    child: _submitting
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.4,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Text(
+                            'Submit Report',
+                            style: GoogleFonts.inter(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                   ),
                 ),
               ],
@@ -232,9 +253,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
     );
   }
 
-  Widget _buildWarningCard(BuildContext context) {
-    final bool dark = Theme.of(context).brightness == Brightness.dark;
-
+  Widget _infoCard(BuildContext context, bool dark) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -267,7 +286,9 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Use this form to report serious issues to the admin team. Please provide clear and accurate information so we can review the case properly.',
+              'Use this form to report serious issues to the admin team. '
+              'Please provide clear and accurate information so we can '
+              'review the case properly.',
               style: GoogleFonts.inter(
                 fontSize: 13,
                 color: dark ? Colors.white70 : const Color(0xFF5E4B36),
@@ -322,22 +343,17 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
         ),
         dropdownColor: dark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        iconEnabledColor: dark ? Colors.white70 : const Color(0xFF2C2621),
-        items: issueTypes.map((issue) {
-          return DropdownMenuItem<String>(
-            value: issue,
-            child: Text(
-              issue,
-              style: GoogleFonts.inter(
-                color: Theme.of(context).colorScheme.onSurface,
+        iconEnabledColor: dark ? Colors.white70 : const Color(0xFFB17B30),
+        items: issueTypes
+            .map(
+              (type) => DropdownMenuItem<String>(
+                value: type,
+                child: Text(type),
               ),
-            ),
-          );
-        }).toList(),
+            )
+            .toList(),
         onChanged: (value) {
-          setState(() {
-            selectedIssue = value!;
-          });
+          if (value != null) setState(() => selectedIssue = value);
         },
       ),
     );
@@ -347,8 +363,8 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
     required BuildContext context,
     required TextEditingController controller,
     required String hintText,
-    required int maxLines,
-    required String? Function(String?) validator,
+    int maxLines = 1,
+    String? Function(String?)? validator,
   }) {
     final bool dark = Theme.of(context).brightness == Brightness.dark;
 
@@ -376,30 +392,16 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
         style: GoogleFonts.inter(
           fontSize: 14,
           color: Theme.of(context).colorScheme.onSurface,
-          fontWeight: FontWeight.w500,
         ),
         decoration: InputDecoration(
           hintText: hintText,
           hintStyle: GoogleFonts.inter(
-            color: dark ? Colors.white54 : const Color(0xFF9B8A76),
-            fontSize: 13.5,
+            fontSize: 14,
+            color: dark ? Colors.white38 : const Color(0xFFB7A999),
           ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 16,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(20),
-            borderSide: BorderSide.none,
-          ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(20),
-            borderSide: const BorderSide(color: Colors.redAccent),
-          ),
-          focusedErrorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(20),
-            borderSide: const BorderSide(color: Colors.redAccent),
-          ),
+          border: InputBorder.none,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
       ),
     );
